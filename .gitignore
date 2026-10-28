@@ -1,0 +1,4 @@
+app/bin/
+app/dist/
+app/.tmp/
+app/*.log

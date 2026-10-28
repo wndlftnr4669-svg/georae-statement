@@ -1,0 +1,51 @@
+{
+  "$schema": "https://raw.githubusercontent.com/neutralinojs/neutralinojs/main/schemas/neutralino.config.schema.json",
+  "applicationId": "kr.georae.statement",
+  "version": "2.0.0",
+  "defaultMode": "window",
+  "port": 0,
+  "documentRoot": "/resources/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": true,
+  "tokenSecurity": "one-time",
+  "logging": {
+    "enabled": true,
+    "writeToLogFile": false
+  },
+  "nativeAllowList": [
+    "app.*",
+    "os.*",
+    "filesystem.*",
+    "events.*",
+    "window.*",
+    "storage.*"
+  ],
+  "modes": {
+    "window": {
+      "title": "간편 거래명세서",
+      "width": 1200,
+      "height": 850,
+      "minWidth": 700,
+      "minHeight": 500,
+      "center": true,
+      "fullScreen": false,
+      "alwaysOnTop": false,
+      "icon": "/resources/icons/appIcon.png",
+      "enableInspector": false,
+      "borderless": false,
+      "maximize": false,
+      "hidden": false,
+      "resizable": true,
+      "exitProcessOnClose": false
+    }
+  },
+  "cli": {
+    "binaryName": "georae",
+    "resourcesPath": "/resources/",
+    "extensionsPath": "/extensions/",
+    "clientLibrary": "/resources/js/neutralino.js",
+    "binaryVersion": "6.4.0",
+    "clientVersion": "6.4.0"
+  }
+}
