@@ -230,7 +230,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
     <label>거래일자<input type="date" id="f-date"></label>
     <label><span id="f-client-lbl">거래처 (공급받는자)</span><input id="f-client" placeholder="이름 입력하면 목록이 떠요" autocomplete="off"></label>
     <label>세금<select id="f-tax"><option value="exempt">면세 (농산물)</option><option value="add10">과세 (부가세 10% 별도)</option></select></label>
-    <label><span id="f-paid-lbl">이번에 받은 돈 (입금액)</span><input id="f-paid" class="n" type="number" step="any" placeholder="0"></label>
+    <label><span id="f-paid-lbl">이번에 받은 돈 (입금액)</span><input id="f-paid" class="n" autocomplete="off" data-num="1" placeholder="0"></label>
   </div>
   <div class="tbl-wrap" style="margin-top:12px">
     <table class="t" id="rows">
@@ -238,7 +238,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
       <tbody></tbody>
     </table>
   </div>
-  <div class="row" style="margin-top:8px"><button class="btn sub sm" id="b-addrow">+ 줄 추가</button><span class="muted">Enter 키로 다음 칸 이동 · 수량 치고 Enter 누르면 단위(박스·Kg·g·개·단) 선택 · 방향키로 칸 이동 · 명세서 1장에 10줄, 넘으면 다음 장으로 이어서 찍혀요</span></div>
+  <div class="row" style="margin-top:8px"><button class="btn sub sm" id="b-addrow">+ 줄 추가</button><span class="muted">Enter 키로 다음 칸 이동 · 수량 치고 Enter 누르면 단위(박스·Kg·g·개·단·망) 선택 · 방향키로 칸 이동 · 명세서 1장에 10줄, 넘으면 다음 장으로 이어서 찍혀요</span></div>
   <div class="sum" id="f-sum"></div>
   <div class="row" style="margin-top:14px">
     <button class="btn" id="b-save">저장</button>
@@ -293,8 +293,8 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
     <label>대표자<input id="c-ceo"></label>
     <label>전화<input id="c-tel"></label>
     <label style="grid-column:span 2">주소<input id="c-addr"></label>
-    <label>이월 미수 (받을 돈)<input id="c-opening" class="n" type="number" step="any" placeholder="0"></label>
-    <label>이월 미지급 (줄 돈)<input id="c-openingBuy" class="n" type="number" step="any" placeholder="0"></label>
+    <label>이월 미수 (받을 돈)<input id="c-opening" class="n" autocomplete="off" data-num="1" placeholder="0"></label>
+    <label>이월 미지급 (줄 돈)<input id="c-openingBuy" class="n" autocomplete="off" data-num="1" placeholder="0"></label>
     <label>메모<input id="c-memo"></label>
   </div>
   <div class="row" style="margin-top:10px"><button class="btn" id="c-save">저장</button><button class="btn sub" id="c-cancel">취소</button></div>
@@ -318,8 +318,8 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
   <div class="grid">
     <label>품목명 *<input id="i-name"></label>
     <label>규격<input id="i-spec" placeholder="예: 50개, 10kg"></label>
-    <label>단위<select id="i-unit"><option value="">없음</option><option>박스</option><option>Kg</option><option>g</option><option>개</option><option>단</option></select></label>
-    <label>기본 단가<input id="i-price" class="n" type="number" step="any"></label>
+    <label>단위<select id="i-unit"><option value="">없음</option><option>박스</option><option>Kg</option><option>g</option><option>개</option><option>단</option><option>망</option></select></label>
+    <label>기본 단가<input id="i-price" class="n" autocomplete="off" data-num="1"></label>
   </div>
   <div class="row" style="margin-top:10px"><button class="btn" id="i-save">저장</button><button class="btn sub" id="i-cancel">취소</button></div>
 </div>
@@ -353,9 +353,9 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
   </div>
   <div class="row" style="gap:18px;margin-top:10px">
     <label class="chk">인쇄 여백 <select id="o-pmargin" style="width:auto"><option value="auto">10mm 여백에 맞춤 (권장)</option><option value="none">여백 없이 꽉 차게</option></select></label>
-    <label class="chk">위치 보정 좌우 <input id="o-offx" class="n" type="number" step="1" style="width:70px">mm</label>
-    <label class="chk">상하 <input id="o-offy" class="n" type="number" step="1" style="width:70px">mm</label>
-    <label class="chk">크기 <input id="o-scale" class="n" type="number" step="1" min="50" max="120" style="width:70px">%</label>
+    <label class="chk">위치 보정 좌우 <input id="o-offx" class="n" autocomplete="off" data-num="1" style="width:70px">mm</label>
+    <label class="chk">상하 <input id="o-offy" class="n" autocomplete="off" data-num="1" style="width:70px">mm</label>
+    <label class="chk">크기 <input id="o-scale" class="n" autocomplete="off" data-num="1" style="width:70px">%</label>
     <button class="btn sub sm" id="o-test">테스트 인쇄</button>
     <span class="muted">처음엔 0 · 0 · 100 으로 두고 테스트 인쇄. 인쇄창 [기타 설정]에서 여백은 '기본값', 머리글 및 바닥글은 체크 해제</span>
   </div>
@@ -510,10 +510,15 @@ function preview(arr){pvArr=arr;const pi=$('#pv-in');pi.className='pv-in'+(S.opt
 $('#pv-close').onclick=()=>$('#pv').classList.add('hide');
 $('#pv-print').onclick=()=>{$('#pv').classList.add('hide');printInvs(pvArr)};
 
+/* 숫자 칸: 한/영 상태를 건드리지 않게 일반 글자 칸으로 두고, 숫자 말고는 지움 */
+function cleanNum(el){const v=el.value,c=v.replace(/[^\d.,\-]/g,'');if(c!==v){const p=el.selectionStart-(v.length-c.length);el.value=c;try{el.setSelectionRange(Math.max(0,p),Math.max(0,p))}catch(e){}}}
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.num&&!e.isComposing)cleanNum(t)},true);
+document.addEventListener('compositionend',e=>{const t=e.target;if(t.dataset&&t.dataset.num)setTimeout(()=>{cleanNum(t);t.dispatchEvent(new Event('input',{bubbles:true}))},0)},true);
 /* ---------- 탭 ---------- */
-const APP_VER='2.0';
+const APP_VER='2.0.1';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정 · 백업] → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정 · 백업]의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.0.1',date:'2026-10-30',title:'한글 입력 · 단위 망',items:['명세서 작성 중에 입력이 자꾸 영어로 바뀌던 문제를 고쳤어요. 이제 한/영은 키보드에서 바꾼 대로 유지돼요.','숫자 칸(수량 · 단가 · 입금액 등)은 한글 상태에서도 숫자가 그대로 들어가요.','단위에 \'망\'을 추가했어요. (수량 치고 Enter → 6번)']},
  {ver:'2.0',date:'2026-10-29',title:'자동 업데이트',items:['이제 프로그램을 켤 때 새 버전이 있으면 알려주고, [지금 업데이트]만 누르면 알아서 바뀌어요. 더 이상 파일을 새로 받을 필요가 없어요.','[설정 · 백업] → [지금 업데이트 확인]으로 직접 확인할 수도 있어요.','윈도우 백신이 프로그램을 잘못 지우는 일이 줄도록 프로그램 파일 구성을 바꿨어요.']},
  {ver:'1.9',date:'2026-10-29',title:'거래돌이 자료 가져오기',items:['[설정 · 백업] → [거래돌이 백업 파일 고르기]로 거래돌이 백업(.mdb)의 거래처, 품목, 매출 · 매입, 입금 · 지급 기록을 한 번에 옮겨올 수 있어요.','같은 파일을 다시 가져오면 겹치지 않고 새로 생긴 것만 더해져요.','[설정] → 금액 계산에서 \'10원 미만 버림\'을 고를 수 있어요. (거래돌이 자료를 가져오면 자동으로 맞춰져요)','[설정] → \'매출·매입 잔액을 하나로 합쳐서 계산\'을 켜면 거래돌이처럼 거래처마다 잔액 하나로 보여요. (거래돌이 자료를 가져오면 자동으로 켜져요)','자료가 많아도 빠르게 돌아가게 계산 방식을 손봤어요.']},
  {ver:'1.8.2',date:'2026-10-28',title:'A5 인쇄 잘림 수정',items:['인쇄창 여백 때문에 명세서 아래쪽(오른쪽 칸)이 잘리던 문제를 고쳤어요. 이제 종이 안쪽 10mm 여백 안에 딱 맞게 줄여서 찍혀요.','[설정 · 백업] → 인쇄 여백에서 \'여백 없이 꽉 차게\'도 고를 수 있어요. (이때는 인쇄창 여백을 \'없음\'으로)']},
@@ -589,7 +594,7 @@ function refreshLists(){$('#dl-clients').innerHTML=S.clients.map(c=>`<option val
 /* ---------- 작성 ---------- */
 let editing=null;
 function addRow(r={}){const tr=document.createElement('tr');
-  tr.innerHTML=`<td><input class="i-name" value="${esc(r.name)}" autocomplete="off"></td><td><input class="i-spec" value="${esc(r.spec)}"></td><td><div class="qtyw"><input class="i-qty n" inputmode="decimal" value="${esc(r.qty??'')}"><button class="u-tag" type="button" tabindex="-1">단위</button></div></td><td><input class="i-price n" inputmode="decimal" value="${esc(r.price??'')}"></td><td class="n i-amt">0</td><td><input class="i-memo" value="${esc(r.memo)}"></td><td><button class="btn del sm" tabindex="-1" title="줄 삭제">✕</button></td>`;
+  tr.innerHTML=`<td><input class="i-name" value="${esc(r.name)}" autocomplete="off"></td><td><input class="i-spec" value="${esc(r.spec)}"></td><td><div class="qtyw"><input class="i-qty n" autocomplete="off" data-num="1" value="${esc(r.qty??'')}"><button class="u-tag" type="button" tabindex="-1">단위</button></div></td><td><input class="i-price n" autocomplete="off" data-num="1" value="${esc(r.price??'')}"></td><td class="n i-amt">0</td><td><input class="i-memo" value="${esc(r.memo)}"></td><td><button class="btn del sm" tabindex="-1" title="줄 삭제">✕</button></td>`;
   setUnit(tr,r.unit||'');if(r.amt!==undefined&&r.amt!==null&&r.amt!=='')tr.dataset.amt=r.amt;
   tr.querySelector('.u-tag').onclick=()=>{tr.querySelector('.i-qty').focus();openUnit(tr)};
   tr.querySelector('.i-name').addEventListener('change',e=>{const it=S.items.find(i=>i.name===e.target.value.trim());if(it)fillItem(tr,it,false)});
@@ -636,7 +641,7 @@ function arrowNav(e){if(!e.key.startsWith('Arrow')||e.shiftKey||e.ctrlKey||e.alt
   else if(e.key==='ArrowLeft'&&(all||b===0)){if(c>0)go=()=>focusCell(tr,c-1);else if(tr.previousElementSibling)go=()=>focusCell(tr.previousElementSibling,COLS.length-1)}
   else if(e.key==='ArrowRight'&&(all||a===len)){if(c<COLS.length-1)go=()=>focusCell(tr,c+1);else{let nx=tr.nextElementSibling;if(!nx&&rowHas(tr))nx=addRow();if(nx)go=()=>focusCell(nx,0)}}
   if(!go)return false;e.preventDefault();closeUnit();acClose();go();return true}
-const UNITS=['박스','Kg','g','개','단'];let unitPop=null;
+const UNITS=['박스','Kg','g','개','단','망'];let unitPop=null;
 function setUnit(tr,u){tr.dataset.unit=u||'';const t=tr.querySelector('.u-tag');t.textContent=u||'단위';t.classList.toggle('empty',!u)}
 function closeUnit(){if(unitPop){unitPop.pop.remove();unitPop=null}}
 function openUnit(tr){closeUnit();const inp=tr.querySelector('.i-qty'),rc=inp.getBoundingClientRect(),pop=document.createElement('div');pop.className='unitpop';
@@ -685,7 +690,7 @@ $('#rows tbody').addEventListener('keydown',e=>{
     if(e.key==='ArrowUp'){e.preventDefault();unitPop.idx=(unitPop.idx+n-1)%n;hlUnit();return}
     if(e.key==='Enter'){e.preventDefault();pickUnit(unitPop.idx);return}
     if(e.key==='Escape'){e.preventDefault();closeUnit();return}
-    if(/^[0-5]$/.test(e.key)){e.preventDefault();pickUnit(e.key==='0'?n-1:+e.key-1);return}
+    if(/^[0-6]$/.test(e.key)){e.preventDefault();pickUnit(e.key==='0'?n-1:+e.key-1);return}
     closeUnit()}
   if(arrowNav(e))return;
   if(e.key==='Enter'&&e.target.classList.contains('i-qty')){e.preventDefault();openUnit(e.target.closest('tr'));return}
@@ -837,7 +842,7 @@ function ledgerTable(cid,k,btn){const rows=ledgerRows(cid,k);return`<div class="
   ${rows.map(r=>`<tr><td>${r.date}</td><td>${esc(r.kind)}</td><td class="n">${r.amt===''?'':fmt(r.amt)}</td><td class="n">${r.paid===''?'':fmt(r.paid)}</td><td class="n"><b>${fmt(r.bal)}</b></td>${btn?`<td>${r.pay?`<button class="btn del sm" data-pay="${r.pay}">삭제</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>`}
 function renderLedger(){const c=S.clients.find(x=>x.id===ledgerCid);if(!c){$('#ledger').classList.add('hide');return}const hb=hasBuy(c),pk=$('#lp-kind')?$('#lp-kind').value:'sale',net=NET();
   $('#ledger').innerHTML=`<h2>${esc(c.name)} ${net?`통합 원장 · ${balTxt(netBal(c.id))}`:`원장 · 미수 ${fmt(curBalance(c.id))}원${hb?` · 미지급 ${fmt(curBalance(c.id,'buy'))}원`:''}`}</h2>
-  <div class="row" style="margin-bottom:12px"><select id="lp-kind" style="width:auto"><option value="sale">받은 돈 (입금)</option><option value="buy">준 돈 (지급)</option></select><input type="date" id="lp-date" value="${today()}" style="width:auto"><input id="lp-amt" class="n" inputmode="decimal" placeholder="금액" style="width:140px"><input id="lp-memo" placeholder="메모 (현금, 계좌 등)" style="width:180px"><button class="btn" id="lp-add">등록</button><button class="btn sub" id="lp-print">원장 인쇄</button></div>
+  <div class="row" style="margin-bottom:12px"><select id="lp-kind" style="width:auto"><option value="sale">받은 돈 (입금)</option><option value="buy">준 돈 (지급)</option></select><input type="date" id="lp-date" value="${today()}" style="width:auto"><input id="lp-amt" class="n" autocomplete="off" data-num="1" placeholder="금액" style="width:140px"><input id="lp-memo" placeholder="메모 (현금, 계좌 등)" style="width:180px"><button class="btn" id="lp-add">등록</button><button class="btn sub" id="lp-print">원장 인쇄</button></div>
   ${net?`<p class="muted" style="margin:0 0 6px">매출·매입을 합쳐서 계산해요 (잔액이 +면 받을 돈, −면 줄 돈)</p>${netLedgerTable(c.id,1)}`:`<h3 style="font-size:14px;margin:6px 0">${kTag('sale')} 매출 원장 (받을 돈)</h3>${ledgerTable(c.id,'sale',1)}
   ${hb?`<h3 style="font-size:14px;margin:16px 0 6px">${kTag('buy')} 매입 원장 (줄 돈)</h3>${ledgerTable(c.id,'buy',1)}`:''}`}`;
   $('#lp-kind').value=pk;

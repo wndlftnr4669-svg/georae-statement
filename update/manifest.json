@@ -1,11 +1,11 @@
 {
- "version": "2.0",
+ "version": "2.0.1",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "b763bfb511f2cd92be1d3fc3ec1ba1f5caedb5ad5a66120662e590d96c0e62fb",
- "size": 684881,
+ "sha256": "610d31fb6e0fe1fbaed6e9efa4b3852b4d2a99562afc9713a12577375e68f9d9",
+ "size": 686008,
  "notes": [
-  "자동 업데이트 기능 추가",
-  "백신 오진 줄이도록 프로그램 파일 구성 변경"
+  "명세서 작성 중 입력이 영어로 바뀌던 문제 수정",
+  "단위에 '망' 추가"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"
