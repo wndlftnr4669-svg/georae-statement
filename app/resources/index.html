@@ -34,6 +34,10 @@ header .ver{font-size:12px;opacity:.75;font-weight:normal;margin-left:6px}
 .notice-list summary .d{font-size:12px;color:var(--sub);white-space:nowrap}
 .notice-list ul{margin:0 0 10px;padding-left:20px;line-height:1.7;color:#374151}
 .tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:10px;background:#eef0f3;color:var(--sub);white-space:nowrap}
+.rk{color:var(--warn);font-weight:bold;font-size:12px}
+tr.risk td{background:#fdecec}
+.stat.warn{background:#fdecec;cursor:pointer}
+.stat.warn .v{color:var(--warn)}
 .tag.sale{background:#e6effb;color:#1f4e9c;font-weight:bold}
 .tag.buy{background:#fff0e0;color:#b45309;font-weight:bold}
 .card.buymode{border:2px solid #f0a35e;background:#fffaf4}
@@ -187,6 +191,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
     <button data-t="list">거래 내역</button>
     <button data-t="clients">거래처 · 미수</button>
     <button data-t="items">품목</button>
+    <button data-t="stock">재고</button>
     <button data-t="settings">설정 · 백업</button>
   </nav>
 </header>
@@ -206,6 +211,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
         <button class="tile" onclick="goTab('list')"><span class="ic">📋</span><b>거래 내역</b><span>일·월·연 검색, 엑셀 저장</span></button>
         <button class="tile" onclick="goTab('clients')"><span class="ic">🏪</span><b>거래처 · 미수</b><span>거래처 관리, 원장, 입금</span></button>
         <button class="tile" onclick="goTab('items')"><span class="ic">🥒</span><b>품목</b><span>품목·규격·단위·단가</span></button>
+        <button class="tile" onclick="goTab('stock')"><span class="ic">📦</span><b>재고</b><span>입고, 재고 현황, 소분</span></button>
         <button class="tile" onclick="goTab('settings')"><span class="ic">⚙️</span><b>설정 · 백업</b><span>가게 정보, 인쇄, 백업</span></button>
       </div>
     </div>
@@ -228,7 +234,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
     <label class="chk buyck"><input type="checkbox" id="f-buy"> <b>매입</b>으로 기록 <span class="muted">(내가 산 물건)</span></label></div>
   <div class="grid">
     <label>거래일자<input type="date" id="f-date"></label>
-    <label><span id="f-client-lbl">거래처 (공급받는자)</span><input id="f-client" placeholder="이름 입력하면 목록이 떠요" autocomplete="off"></label>
+    <label><span id="f-client-lbl">거래처 (공급받는자)</span><input id="f-client" placeholder="이름 입력하면 목록이 떠요" autocomplete="off"><span id="f-risk" class="rk"></span></label>
     <label>세금<select id="f-tax"><option value="exempt">면세 (농산물)</option><option value="add10">과세 (부가세 10% 별도)</option></select></label>
     <label><span id="f-paid-lbl">이번에 받은 돈 (입금액)</span><input id="f-paid" class="n" autocomplete="off" data-num="1" placeholder="0"></label>
   </div>
@@ -300,9 +306,9 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
   <div class="row" style="margin-top:10px"><button class="btn" id="c-save">저장</button><button class="btn sub" id="c-cancel">취소</button></div>
 </div>
 <div class="card">
-  <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">거래처 목록</h2><div class="row"><input id="c-search" placeholder="🔍 거래처 검색 (상호·대표·전화)" style="width:240px" autocomplete="off"><button class="btn sub sm" id="c-xlsx">📥 미수 현황 엑셀</button></div></div>
+  <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">거래처 목록</h2><div class="row"><input id="c-search" placeholder="🔍 거래처 검색 (상호·대표·전화)" style="width:240px" autocomplete="off"><label class="chk"><input type="checkbox" id="c-risk"> ⚠ 위험 거래처만</label><button class="btn sub sm" id="c-xlsx">📥 미수 현황 엑셀</button></div></div>
   <div class="tbl-wrap"><table class="t">
-    <thead><tr><th>상호</th><th>대표</th><th>전화</th><th class="n">미수 (받을 돈)</th><th class="n">미지급 (줄 돈)</th><th></th></tr></thead>
+    <thead><tr><th>상호</th><th>전화</th><th class="n">미수 (받을 돈)</th><th class="n">미지급 (줄 돈)</th><th>마지막 입금</th><th>위험</th><th></th></tr></thead>
     <tbody id="c-body"></tbody>
   </table></div>
   <div id="c-foot" class="muted" style="margin-top:8px"></div>
@@ -313,21 +319,73 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 <!-- 품목 -->
 <section data-t="items" class="hide">
 <div class="card">
+  <h2>🔍 품목 검색 · 거래 기록</h2>
+  <div class="row" style="margin-bottom:8px"><input id="is-q" placeholder="예: 백오이 (일부만 쳐도 돼요)" style="width:260px" autocomplete="off">
+    <div class="seg" id="is-kind"><button data-k="all" class="on">매출 + 매입</button><button data-k="sale">매출만</button><button data-k="buy">매입만</button></div>
+    <select id="is-per" style="width:auto"><option value="90">최근 3개월</option><option value="365" selected>최근 1년</option><option value="0">전체 기간</option></select></div>
+  <div id="is-out" class="muted">품목 이름을 치면 그 글자가 들어간 품목과 거래 기록이 나와요.</div>
+</div>
+<div class="card">
   <h2>품목 등록</h2>
   <p class="muted" style="margin-top:0">명세서에서 처음 쓴 품목은 자동으로 여기 추가돼요. 단가는 비워둬도 돼요.</p>
   <div class="grid">
     <label>품목명 *<input id="i-name"></label>
     <label>규격<input id="i-spec" placeholder="예: 50개, 10kg"></label>
     <label>단위<select id="i-unit"><option value="">없음</option><option>박스</option><option>Kg</option><option>g</option><option>개</option><option>단</option><option>망</option></select></label>
-    <label>기본 단가<input id="i-price" class="n" autocomplete="off" data-num="1"></label>
+    <label>기본 판매단가<input id="i-price" class="n" autocomplete="off" data-num="1"></label>
+    <label>매입단가<input id="i-cost" class="n" autocomplete="off" data-num="1"></label>
+    <label>소분 단위 1 (1 기본단위 = 몇?)<span class="row" style="gap:4px;flex-wrap:nowrap"><input id="i-sp1" class="n" autocomplete="off" data-num="1" placeholder="예: 10" style="width:70px"><select id="i-su1"></select></span></label>
+    <label>소분 단위 2<span class="row" style="gap:4px;flex-wrap:nowrap"><input id="i-sp2" class="n" autocomplete="off" data-num="1" placeholder="예: 50" style="width:70px"><select id="i-su2"></select></span></label>
+    <label class="chk" style="align-self:end"><input type="checkbox" id="i-track"> 재고 관리</label>
   </div>
+  <p class="muted" style="margin:6px 0 0">소분 예시: 기본 단위가 박스이고 1박스 = 10Kg면, 소분 단위 1에 10 · Kg. 명세서에서 Kg로 팔면 재고에서 박스로 바꿔서 빠져요.</p>
   <div class="row" style="margin-top:10px"><button class="btn" id="i-save">저장</button><button class="btn sub" id="i-cancel">취소</button></div>
 </div>
 <div class="card">
   <div class="tbl-wrap"><table class="t">
-    <thead><tr><th>품목</th><th>규격</th><th>단위</th><th class="n">기본 단가</th><th></th></tr></thead>
+    <thead><tr><th>품목</th><th>규격</th><th>단위</th><th>소분</th><th class="n">판매단가</th><th class="n">매입단가</th><th class="n">재고</th><th></th></tr></thead>
     <tbody id="i-body"></tbody>
   </table></div>
+</div>
+</section>
+
+<!-- 재고 -->
+<section data-t="stock" class="hide">
+<div class="card">
+  <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">📦 재고 현황</h2>
+    <div class="row"><input id="st-q" placeholder="🔍 품목 검색" style="width:180px" autocomplete="off"><label class="chk"><input type="checkbox" id="st-all"> 모든 품목 보기</label><button class="btn sub sm" id="st-xlsx">📥 엑셀</button></div></div>
+  <p class="muted" style="margin:0 0 8px">재고 = 매입(입고) − 판매(명세서) ± 조정·소분. 명세서를 쓰거나 고치거나 지우면 재고도 자동으로 따라 바뀌어요. <span id="st-since"></span></p>
+  <div class="tbl-wrap"><table class="t" id="st-table"></table></div>
+</div>
+<div class="card">
+  <h2>➕ 매입 입력 (입고)</h2>
+  <p class="muted" style="margin-top:0">산 물건을 여기 넣으면 재고가 늘고, 매입 기록(매입처 미지급)에도 같이 들어가요. 여러 품목을 한 번에 넣을 땐 [명세서 작성]에서 [매입으로 기록]을 써도 돼요.</p>
+  <div class="grid">
+    <label>날짜<input type="date" id="pi-date"></label>
+    <label>매입처 (비워도 돼요)<input id="pi-client" autocomplete="off" placeholder="예: 김농부"></label>
+    <label>품목 *<input id="pi-name" autocomplete="off"></label>
+    <label>규격<input id="pi-spec" autocomplete="off"></label>
+    <label>수량 *<input id="pi-qty" class="n" autocomplete="off" data-num="1"></label>
+    <label>단위<select id="pi-unit"></select></label>
+    <label>매입단가<input id="pi-price" class="n" autocomplete="off" data-num="1"></label>
+    <label>이번에 준 돈<input id="pi-paid" class="n" autocomplete="off" data-num="1" placeholder="0"></label>
+  </div>
+  <div class="row" style="margin-top:10px"><button class="btn" id="pi-save">입고 저장</button><span class="muted" id="pi-hint"></span></div>
+</div>
+<div class="card">
+  <h2>✂️ 소분 · 재고 조정</h2>
+  <p class="muted" style="margin-top:0">소분: 큰 단위로 산 걸 나눠서 다른 품목으로 팔 때 (예: 가지 1박스 → 가지 소포장 8봉). 같은 품목을 낱개·Kg로 나눠 파는 건 [품목]에서 '소분 단위'만 정해두면 명세서에서 자동으로 계산돼요.</p>
+  <div class="row" style="margin-bottom:6px"><b style="width:60px">소분</b>
+    <input id="sp-from" placeholder="원래 품목" style="width:150px" autocomplete="off"><input id="sp-fq" class="n" data-num="1" placeholder="수량" style="width:70px" autocomplete="off"><select id="sp-fu" style="width:auto"></select>
+    <span>→</span><input id="sp-to" placeholder="새 품목" style="width:150px" autocomplete="off"><input id="sp-tq" class="n" data-num="1" placeholder="수량" style="width:70px" autocomplete="off"><select id="sp-tu" style="width:auto"></select>
+    <button class="btn" id="sp-save">소분하기</button></div>
+  <div class="row"><b style="width:60px">조정</b>
+    <input id="aj-name" placeholder="품목" style="width:150px" autocomplete="off"><input id="aj-qty" class="n" data-num="1" placeholder="+10 / -3" style="width:90px" autocomplete="off"><select id="aj-unit" style="width:auto"></select>
+    <select id="aj-why" style="width:auto"><option>기초 재고</option><option>실사 차이</option><option>폐기 · 손실</option><option>기타</option></select>
+    <button class="btn" id="aj-save">조정 저장</button></div>
+  <div class="row" style="margin-top:10px"><span>재고 계산 시작일</span><input type="date" id="st-start" style="width:auto"><span class="muted">이 날짜부터의 매입·판매만 재고에 반영해요. 시작일에 가진 물건은 '기초 재고'로 넣어주세요.</span></div>
+  <h3 style="font-size:14px;margin:14px 0 6px">최근 소분 · 조정 기록</h3>
+  <div class="tbl-wrap"><table class="t" id="aj-table"></table></div>
 </div>
 </section>
 
@@ -362,6 +420,11 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
   <div class="row" style="gap:18px;margin-top:10px">
     <label class="chk"><input type="checkbox" id="o-bal"> 명세서에 전잔액 · 입금 · 잔액 표시</label>
     <label class="chk"><input type="checkbox" id="o-ime"> 입력 칸은 한글로 시작</label>
+  </div>
+  <h2 style="margin-top:16px">⚠ 미수 위험 표시</h2>
+  <div class="row" style="gap:12px"><label class="chk"><input type="checkbox" id="o-risk"> 켜기</label><label class="chk">잔액이 <input id="o-ramt" class="n" data-num="1" autocomplete="off" style="width:110px"> 원 이상이거나</label><label class="chk">마지막 입금 후 <input id="o-rdays" class="n" data-num="1" autocomplete="off" style="width:60px"> 일이 넘으면 빨간색으로 표시</label>
+  </div>
+  <div class="row" style="gap:18px;margin-top:10px">
     <label class="chk"><input type="checkbox" id="o-net"> 매출·매입 잔액을 하나로 합쳐서 계산 (거래돌이 방식)</label>
     <label class="chk"><input type="checkbox" id="o-mono"> 흑백 프린터용 (선을 검정으로)</label>
     <label class="chk">금액 계산 <select id="o-round" style="width:auto"><option value="none">원 단위 (반올림)</option><option value="floor10">10원 미만 버림</option></select></label>
@@ -410,12 +473,12 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 <script>
 /* ---------- 저장소 ---------- */
 const KEY='gm_v1';
-function blank(){return{company:{name:'',bizno:'',ceo:'',addr:'',biz:'',kind:'',tel:'',bank:''},opt:{showBal:true,mono:false,defTax:'exempt',rowsPerPage:10,paper:'a5',a5dir:'portrait',offX:0,offY:0,scale:100},clients:[],items:[],invoices:[],payments:[]}}
+function blank(){return{company:{name:'',bizno:'',ceo:'',addr:'',biz:'',kind:'',tel:'',bank:''},opt:{showBal:true,mono:false,defTax:'exempt',rowsPerPage:10,paper:'a5',a5dir:'portrait',offX:0,offY:0,scale:100},clients:[],items:[],invoices:[],payments:[],adj:[]}}
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.company){const b=blank();return Object.assign(b,s,{opt:Object.assign(b.opt,s.opt||{})})}}catch(e){}return blank()}
 const IS_APP=typeof NL_PATH!=='undefined'&&typeof Neutralino!=='undefined';
 let DATA_DIR='',lastBk='',saving=Promise.resolve();
 const winPath=p=>String(p).replace(/\//g,'\\');
-function save(){IDX=null;BAL=null;const txt=JSON.stringify(S);
+function save(){IDX=null;BAL=null;RISKC=null;STKC=null;const txt=JSON.stringify(S);
   if(IS_APP){saving=saving.then(async()=>{try{await Neutralino.filesystem.writeFile(DATA_DIR+'/data.json',txt);const d=today();if(lastBk!==d){await Neutralino.filesystem.writeFile(DATA_DIR+'/backup/'+d+'.json',txt);lastBk=d}}catch(e){alert('자료 저장에 실패했어요.\n프로그램 폴더에 쓰기 권한이 있는지 확인해주세요.\n('+(e.message||e.code||e)+')')}});return}
   try{localStorage.setItem(KEY,txt)}catch(e){alert('저장에 실패했어요. 브라우저 저장공간을 확인해주세요.')}}
 async function appInit(){Neutralino.init();Neutralino.events.on('windowClose',onCloseReq);
@@ -546,9 +609,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.0.3';
+const APP_VER='2.1';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정 · 백업] → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정 · 백업]의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.1',date:'2026-10-31',title:'품목 검색 · 미수 위험 · 재고',items:['[품목 · 검색]에서 \'백오이\'처럼 치면 그 글자가 들어간 품목과 지난 거래 기록(날짜 · 거래처 · 수량 · 단가)이 다 나와요. 최근 판매가 · 매입가도 같이 보여요.','미수 위험 표시: 잔액이 기준 이상이거나 마지막 입금 후 오래된 거래처를 빨간색으로 보여줘요. 기준 금액 · 기간은 [설정]에서 정할 수 있어요.','새 [재고] 메뉴: 매입 입력(입고, 매입단가 포함) · 재고 현황 · 소분 · 재고 조정. 명세서를 쓰거나 고치거나 지우면 재고도 자동으로 맞춰져요.','[품목]에서 소분 단위(예: 1박스 = 10Kg)를 정하면, Kg로 팔아도 재고에서 박스로 바꿔서 빠져요.']},
  {ver:'2.0.3',date:'2026-10-31',title:'한글 전환 빠르게',items:['한글로 바뀌기까지 살짝 늦던 걸 빠르게 고쳤어요. 프로그램을 켤 때 미리 준비해두고, 켜자마자 한글로 맞춰요.']},
  {ver:'2.0.2',date:'2026-10-31',title:'한글로 시작',items:['명세서 작성 창을 열면 거래처 칸에 바로 커서가 가고, 입력이 한글로 시작해요. (다른 창도 처음 입력할 때 한글로 맞춰요)','영어가 필요하면 한/영 키로 바꾸면 되고, 바꾼 건 창을 닫을 때까지 그대로예요.','[설정] → \'입력 칸은 한글로 시작\'에서 끌 수 있어요.','업데이트를 올리자마자 바로 확인되게 고쳤어요.']},
  {ver:'2.0.1',date:'2026-10-30',title:'한글 입력 · 단위 망',items:['명세서 작성 중에 입력이 자꾸 영어로 바뀌던 문제를 고쳤어요. 이제 한/영은 키보드에서 바꾼 대로 유지돼요.','숫자 칸(수량 · 단가 · 입금액 등)은 한글 상태에서도 숫자가 그대로 들어가요.','단위에 \'망\'을 추가했어요. (수량 치고 Enter → 6번)']},
@@ -565,7 +629,7 @@ const NOTICES=[
  {ver:'1.2',date:'2026-10-27',title:'검색 · 엑셀 저장',items:['거래 내역을 일별 · 월별 · 연별 · 기간으로 검색할 수 있어요.','거래처 · 품목 검색, 거래처별 · 날짜별 · 품목별 합계 보기를 추가했어요.','검색 결과와 거래처 미수 현황을 엑셀로 저장할 수 있어요.']},
  {ver:'1.1',date:'2026-10-27',title:'A5 용지 인쇄',items:['A5 용지에 거래처용 1장, 내 가게용 1장씩 따로 인쇄돼요.']},
  {ver:'1.0',date:'2026-10-27',title:'첫 버전',items:['거래명세서 작성 · 인쇄, 거래처 · 미수 관리, 품목 관리, 자료 백업.']}];
-const WTITLE={write:'📝 명세서 작성',list:'📋 거래 내역',clients:'🏪 거래처 · 미수',items:'🥒 품목',settings:'⚙️ 설정 · 백업'};
+const WTITLE={write:'📝 명세서 작성',list:'📋 거래 내역',clients:'🏪 거래처 · 미수',items:'🥒 품목 · 검색',stock:'📦 재고',settings:'⚙️ 설정 · 백업'};
 document.querySelectorAll('section[data-t]').forEach(sec=>{const t=sec.dataset.t;if(t==='home')return;sec.classList.add('win');
   const body=document.createElement('div');body.className='win-body';while(sec.firstChild)body.appendChild(sec.firstChild);
   const bar=document.createElement('div');bar.className='win-bar';bar.innerHTML=`<span class="win-title">${WTITLE[t]}</span><button class="win-x" title="닫기 (Esc)">✕</button>`;
@@ -583,10 +647,11 @@ function renderHome(){const t=today(),m=t.slice(0,7);let tc=0,ts=0,tp=0,ms=0,mb=
   <div class="stat"><div class="k">이번 달 매출</div><div class="v">${fmt(ms)}</div><div class="s">${mc}건 · 원</div></div>
   <div class="stat"><div class="k">이번 달 매입</div><div class="v">${fmt(mb)}</div><div class="s">${mbc}건 · 원</div></div>
   <div class="stat"><div class="k">전체 미수 (받을 돈)</div><div class="v">${fmt(mis)}</div><div class="s">${misN}곳 · 원</div></div>
-  <div class="stat"><div class="k">전체 미지급 (줄 돈)</div><div class="v">${fmt(pay)}</div><div class="s">${payN}곳 · 원</div></div>`;
+  <div class="stat"><div class="k">전체 미지급 (줄 돈)</div><div class="v">${fmt(pay)}</div><div class="s">${payN}곳 · 원</div></div>${S.opt.riskOn!==false?(()=>{const rl=riskList();return`<div class="stat${rl.length?' warn':''}" id="h-risk"><div class="k">⚠ 미수 위험 거래처</div><div class="v">${rl.length}곳</div><div class="s">${rl.length?esc(rl.slice(0,2).map(x=>x.c.name).join(', '))+(rl.length>2?' 외':''):'없음'}</div></div>`})():''}`;
+  const hr=$('#h-risk');if(hr)hr.onclick=async()=>{await goTab('clients');if(curTab==='clients'){$('#c-risk').checked=true;renderClients()}};
   $('#h-notice').innerHTML=NOTICES.map((n,k)=>`<details${n.pin||n.ver===APP_VER?' open':''}><summary>${n.pin?'<span class="tag pin">공지</span>':`<span class="tag${n.ver===APP_VER?' new':''}">${n.ver===APP_VER?'NEW ':''}v${n.ver}</span>`}<span class="t">${esc(n.title)}</span><span class="d">${n.date}</span></summary><ul>${n.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>`).join('')}
 let curTab='home';
-function tab(name){const prevTab=curTab;curTab=name;acClose();closeUnit();if(name==='home')for(const k in imeDone)delete imeDone[k];document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));document.querySelectorAll('section[data-t]').forEach(s=>s.classList.toggle('hide',s.dataset.t!==name&&s.dataset.t!=='home'));$('#win-dim').classList.toggle('hide',name==='home');if(name==='home')renderHome();winTop();({list:()=>{fillYears();renderList()},clients:renderClients,items:renderItems,settings:renderSettings}[name]||(()=>{}))();winTop()}
+function tab(name){const prevTab=curTab;curTab=name;acClose();closeUnit();if(name==='home')for(const k in imeDone)delete imeDone[k];document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));document.querySelectorAll('section[data-t]').forEach(s=>s.classList.toggle('hide',s.dataset.t!==name&&s.dataset.t!=='home'));$('#win-dim').classList.toggle('hide',name==='home');if(name==='home')renderHome();winTop();({list:()=>{fillYears();renderList()},clients:renderClients,items:()=>{renderItems();renderItemSearch();setTimeout(()=>$('#is-q').focus(),30)},stock:renderStock,settings:renderSettings}[name]||(()=>{}))();winTop()}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>goTab(b.dataset.t));
 /* ---------- 확인창 · 미저장 확인 ---------- */
 function ask(msg,btns){return new Promise(res=>{const m=document.createElement('div');m.className='modal';
@@ -599,8 +664,8 @@ const TABNAME={write:'명세서 작성',clients:'거래처',items:'품목',setti
 function formSig(t){const v=id=>{const el=$(id);return el?(el.type==='checkbox'?el.checked:el.value):''};
   if(t==='write')return JSON.stringify([v('#f-buy'),v('#f-client'),v('#f-tax'),v('#f-paid'),readRows()]);
   if(t==='clients')return JSON.stringify(CF.map(f=>v('#c-'+f)));
-  if(t==='items')return JSON.stringify(['name','spec','unit','price'].map(f=>v('#i-'+f)));
-  if(t==='settings')return JSON.stringify([...SF.map(f=>v('#s-'+f)),...['#o-paper','#o-pmargin','#o-copies','#o-a5dir','#o-offx','#o-offy','#o-scale','#o-bal','#o-mono','#o-tax','#o-round','#o-net','#o-ime'].map(v)]);
+  if(t==='items')return JSON.stringify([...IF.map(f=>v('#i-'+f)),v('#i-track')]);
+  if(t==='settings')return JSON.stringify([...SF.map(f=>v('#s-'+f)),...['#o-paper','#o-pmargin','#o-copies','#o-a5dir','#o-offx','#o-offy','#o-scale','#o-bal','#o-mono','#o-tax','#o-round','#o-net','#o-ime','#o-risk','#o-ramt','#o-rdays'].map(v)]);
   return ''}
 const base={};
 const markClean=t=>{base[t]=formSig(t)};
@@ -651,9 +716,9 @@ document.addEventListener('mousedown',e=>{if(ac&&!ac.pop.contains(e.target)&&e.t
 document.addEventListener('focusout',e=>{if(ac&&e.target===ac.inp)setTimeout(()=>{if(ac&&document.activeElement!==ac.inp)acClose()},0)});
 function matchSort(arr,key,q){return arr.filter(x=>key(x).includes(q)).sort((a,b)=>(key(a).startsWith(q)?0:1)-(key(b).startsWith(q)?0:1)||key(a).length-key(b).length||key(a).localeCompare(key(b),'ko')).slice(0,8)}
 function fillItem(tr,it,overwrite){const sp=tr.querySelector('.i-spec'),pr=tr.querySelector('.i-price');tr.querySelector('.i-name').value=it.name;
-  if(overwrite||!sp.value)sp.value=it.spec||'';if(it.unit&&(overwrite||!tr.dataset.unit))setUnit(tr,it.unit);if(!pr.value&&num(it.price))pr.value=it.price;recalc()}
+  if(overwrite||!sp.value)sp.value=it.spec||'';if(it.unit&&(overwrite||!tr.dataset.unit))setUnit(tr,it.unit);const P=$('#f-buy').checked&&num(it.cost)?it.cost:it.price;if(!pr.value&&num(P))pr.value=P;recalc()}
 function itemAC(inp){const q=inp.value.trim();if(!q){acClose();return}
-  acOpen(inp,matchSort(S.items,i=>i.name,q),i=>`<span>${esc(i.name)}</span><span class="m">${i.spec?esc(i.spec)+' · ':''}${i.unit?`<span class="u">${esc(i.unit)}</span>`:'단위 없음'}${num(i.price)?' · '+fmt(i.price)+'원':''}</span>`,
+  const buyM=$('#f-buy').checked,STK=stockMap();acOpen(inp,matchSort(S.items,i=>i.name,q),i=>{const st=STK[i.name],pr=buyM&&num(i.cost)?i.cost:i.price;return`<span>${esc(i.name)}</span><span class="m">${i.spec?esc(i.spec)+' · ':''}${i.unit?`<span class="u">${esc(i.unit)}</span>`:'단위 없음'}${num(pr)?' · '+(buyM?'매입 ':'')+fmt(pr)+'원':''}${st&&st.shown?` · 재고 <b>${fq(Math.round(st.qty*100)/100)}</b>`:''}</span>`},
     it=>{const tr=inp.closest('tr');fillItem(tr,it,true);const q2=tr.querySelector('.i-qty');q2.focus();q2.select()})}
 function clientAC(inp){const q=inp.value.trim();if(!q){acClose();return}
   acOpen(inp,matchSort(S.clients,c=>c.name,q),c=>`<span>${esc(c.name)}</span><span class="m">${c.tel?esc(c.tel)+' · ':''}미수 ${fmt(curBalance(c.id))}${Math.round(curBalance(c.id,'buy'))?' · 미지급 '+fmt(curBalance(c.id,'buy')):''}</span>`,
@@ -692,6 +757,7 @@ function formInv(){const name=$('#f-client').value.trim(),cl=S.clients.find(c=>c
   return{id:editing||'_new',no:old?old.no:'(저장 시 번호 부여)',date:$('#f-date').value||today(),clientId:cl?cl.id:null,clientName:name,kind:$('#f-buy').checked?'buy':'sale',taxMode:$('#f-tax').value,paid:num($('#f-paid').value),rows:readRows(),created:old?old.created:Date.now()}}
 function recalc(){[...$('#rows tbody').children].forEach(tr=>tr.querySelector('.i-amt').textContent=fmt(trAmt(tr)));
   const inv=formInv(),T=invTotal(inv),tax=inv.taxMode==='add10',buy=inv.kind==='buy',prev=inv.clientId?balanceBefore(inv.clientId,inv.date,inv.created,inv.id,inv.kind):0,bal=prev+T.total-inv.paid;
+  const rk=!buy&&inv.clientId?riskOf(inv.clientId):null;$('#f-risk').textContent=rk?'⚠ 미수 주의: '+rk.why:'';
   $('#f-sum').innerHTML=`<span>${tax?'공급가액':'금액'} <b>${fmt(T.supply)}</b></span>${tax?`<span>세액 <b>${fmt(T.tax)}</b></span>`:''}<span>합계 <b>${fmt(T.total)}</b>원</span><span class="muted">│</span><span>${buy?'전 미지급':'전잔액'} <b>${fmt(prev)}</b></span><span>${buy?'지급':'입금'} <b>${fmt(inv.paid)}</b></span><span>${buy?'미지급 잔액':'잔액'} <b>${fmt(bal)}</b>원</span>`}
 function setBuyUI(){const b=$('#f-buy').checked,card=$('#f-buy').closest('.card');card.classList.toggle('buymode',b);
   $('#f-client-lbl').textContent=b?'매입처 (산 곳 · 공급자)':'거래처 (공급받는자)';$('#f-paid-lbl').textContent=b?'이번에 준 돈 (지급액)':'이번에 받은 돈 (입금액)';
@@ -705,9 +771,11 @@ function saveInv(andPrint){const inv=formInv();
   let cl=S.clients.find(c=>c.name===inv.clientName);
   if(!cl){cl={id:uid(),name:inv.clientName,bizno:'',ceo:'',tel:'',addr:'',opening:0,memo:''};S.clients.push(cl)}
   inv.clientId=cl.id;delete inv.clientName;
-  inv.rows.forEach(r=>{if(!r.name)return;const it=S.items.find(i=>i.name===r.name);if(!it)S.items.push({id:uid(),name:r.name,spec:r.spec,unit:r.unit||'',price:num(r.price)});else{if(r.unit)it.unit=r.unit;if(r.spec)it.spec=r.spec}});
+  inv.rows.forEach(r=>{if(!r.name)return;let it=S.items.find(i=>i.name===r.name);if(!it){it={id:uid(),name:r.name,spec:r.spec,unit:r.unit||'',price:inv.kind==='buy'?0:num(r.price)};S.items.push(it)}else{if(r.unit&&!(it.subs||[]).some(s=>s.u===r.unit))it.unit=r.unit;if(r.spec)it.spec=r.spec}
+    if(inv.kind==='buy'){it.track=true;if(r.price!==''&&(!r.unit||r.unit===it.unit))it.cost=num(r.price)}});
   if(editing){const k=S.invoices.findIndex(x=>x.id===editing),old=S.invoices[k];inv.id=editing;if(kindOf(old)!==inv.kind)inv.no=nextNo(inv.date,inv.kind);S.invoices[k]=inv}else{inv.id=uid();inv.no=nextNo(inv.date,inv.kind);S.invoices.push(inv)}
-  save();refreshLists();toast((inv.kind==='buy'?'매입 저장했어요':'저장했어요')+' · No. '+inv.no);if(andPrint)printInvs([inv]);newForm(true);return true}
+  save();refreshLists();let lowTxt='';if(inv.kind==='sale'){const M=stockMap();lowTxt=[...new Set(inv.rows.map(r=>r.name))].filter(n=>M[n]&&M[n].shown&&M[n].qty<0).map(n=>`${n} ${fq(Math.round(M[n].qty*100)/100)}`).join(', ')}
+  toast((inv.kind==='buy'?'매입 저장했어요':'저장했어요')+' · No. '+inv.no+(lowTxt?` · ⚠ 재고 부족: ${lowTxt}`:''));if(andPrint)printInvs([inv]);newForm(true);return true}
 $('#b-addrow').onclick=()=>{addRow().querySelector('input').focus()};
 $('#b-save').onclick=()=>saveInv(false);
 $('#b-saveprint').onclick=()=>saveInv(true);
@@ -845,15 +913,15 @@ let editC=null;
 const CF=['name','bizno','ceo','tel','addr','opening','openingBuy','memo'];
 function clearC(){editC=null;CF.forEach(f=>$('#c-'+f).value='');$('#c-title').textContent='거래처 등록';markClean('clients')}
 function renderClients(){let tot=0,totB=0;
-  const cq=($('#c-search').value||'').trim();$('#c-body').innerHTML=[...S.clients].filter(c=>!cq||[c.name,c.ceo,c.tel,c.bizno].some(v=>String(v||'').includes(cq))).sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(c=>{const b=curBalance(c.id),q=curBalance(c.id,'buy');tot+=b;totB+=q;return`<tr><td>${esc(c.name)}</td><td>${esc(c.ceo)}</td><td>${esc(c.tel)}</td><td class="n"><b>${fmt(b)}</b></td><td class="n">${Math.round(q)?`<b style="color:#b45309">${fmt(q)}</b>`:'0'}</td><td><div class="acts"><button class="btn sub sm" data-a="l" data-id="${c.id}">원장 · 입금/지급</button><button class="btn sub sm" data-a="e" data-id="${c.id}">수정</button><button class="btn del sm" data-a="d" data-id="${c.id}">삭제</button></div></td></tr>`}).join('')||'<tr><td colspan="6" class="muted">등록된 거래처가 없어요. 명세서를 쓰면 자동으로 추가돼요.</td></tr>';
-  $('#c-foot').innerHTML=`거래처 ${S.clients.length}곳 · 전체 미수 <b>${fmt(tot)}</b>원 · 전체 미지급 <b>${fmt(totB)}</b>원`;if(ledgerCid)renderLedger()}
+  const cq=($('#c-search').value||'').trim(),onlyRisk=$('#c-risk').checked;$('#c-body').innerHTML=[...S.clients].filter(c=>!cq||[c.name,c.ceo,c.tel,c.bizno].some(v=>String(v||'').includes(cq))).map(c=>({c,r:riskOf(c.id)})).filter(x=>!onlyRisk||x.r).sort((a,b)=>onlyRisk?b.r.bal-a.r.bal:a.c.name.localeCompare(b.c.name,'ko')).map(({c,r})=>{const b=curBalance(c.id),q=curBalance(c.id,'buy');tot+=b;totB+=q;return`<tr${r?' class="risk"':''}><td>${r?'⚠ ':''}${esc(c.name)}</td><td>${esc(c.tel)}</td><td class="n"><b${r?' style="color:var(--warn)"':''}>${fmt(b)}</b></td><td class="n">${Math.round(q)?`<b style="color:#b45309">${fmt(q)}</b>`:'0'}</td><td>${lastRecv(c.id)||'<span class="muted">없음</span>'}</td><td>${r?`<span class="rk">${esc(r.why)}</span>`:''}</td><td><div class="acts"><button class="btn sub sm" data-a="l" data-id="${c.id}">원장 · 입금/지급</button><button class="btn sub sm" data-a="e" data-id="${c.id}">수정</button><button class="btn del sm" data-a="d" data-id="${c.id}">삭제</button></div></td></tr>`}).join('')||'<tr><td colspan="7" class="muted">'+(onlyRisk?'위험 거래처가 없어요. 👍':'등록된 거래처가 없어요. 명세서를 쓰면 자동으로 추가돼요.')+'</td></tr>';
+  $('#c-foot').innerHTML=`거래처 ${S.clients.length}곳 · 전체 미수 <b>${fmt(tot)}</b>원 · 전체 미지급 <b>${fmt(totB)}</b>원${S.opt.riskOn!==false?` · <span class="rk">⚠ 위험 ${riskList().length}곳</span> <span class="muted">(잔액 ${fmt(S.opt.riskAmt??1000000)}원 이상 또는 ${S.opt.riskDays??30}일 넘게 입금 없음 · 기준은 [설정]에서)</span>`:''}`;if(ledgerCid)renderLedger()}
 function saveClient(){const name=$('#c-name').value.trim();if(!name){alert('상호를 입력해주세요.');return false}
   const dup=S.clients.find(c=>c.name===name&&c.id!==editC);if(dup){alert('같은 이름의 거래처가 이미 있어요.');return false}
   let c=editC?S.clients.find(x=>x.id===editC):null;if(!c){c={id:uid()};S.clients.push(c)}
   CF.forEach(f=>c[f]=/^opening/.test(f)?num($('#c-'+f).value):$('#c-'+f).value.trim());save();refreshLists();clearC();renderClients();toast('거래처 저장했어요');return true}
 $('#c-save').onclick=saveClient;
 $('#c-cancel').onclick=clearC;
-$('#c-search').addEventListener('input',renderClients);
+$('#c-search').addEventListener('input',renderClients);$('#c-risk').addEventListener('change',renderClients);
 $('#c-body').onclick=e=>{const b=e.target.closest('button');if(!b)return;const c=S.clients.find(x=>x.id===b.dataset.id);if(!c)return;
   if(b.dataset.a==='l')openLedger(c.id);
   if(b.dataset.a==='e'){editC=c.id;CF.forEach(f=>$('#c-'+f).value=c[f]??'');$('#c-title').textContent='거래처 수정 · '+c.name;markClean('clients');winTop()}
@@ -890,22 +958,23 @@ function printLedger(cid){const c=S.clients.find(x=>x.id===cid),hb=hasBuy(c);
 
 /* ---------- 품목 ---------- */
 let editI=null;
-function clearI(){editI=null;['name','spec','unit','price'].forEach(f=>$('#i-'+f).value='');markClean('items')}
-function renderItems(){$('#i-body').innerHTML=[...S.items].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(i=>`<tr><td>${esc(i.name)}</td><td>${esc(i.spec)}</td><td>${esc(i.unit||'')}</td><td class="n">${num(i.price)?fmt(i.price):''}</td><td><div class="acts"><button class="btn sub sm" data-a="e" data-id="${i.id}">수정</button><button class="btn del sm" data-a="d" data-id="${i.id}">삭제</button></div></td></tr>`).join('')||'<tr><td colspan="5" class="muted">등록된 품목이 없어요</td></tr>'}
-function saveItem(){const name=$('#i-name').value.trim();if(!name){alert('품목명을 입력해주세요.');return false}let it=editI?S.items.find(x=>x.id===editI):null;if(!it){it={id:uid()};S.items.push(it)}it.name=name;it.spec=$('#i-spec').value.trim();it.unit=$('#i-unit').value;it.price=num($('#i-price').value);save();refreshLists();clearI();renderItems();toast('품목 저장했어요');return true}
+const IF=['name','spec','unit','price','cost','sp1','su1','sp2','su2'];
+function clearI(){editI=null;IF.forEach(f=>$('#i-'+f).value='');$('#i-track').checked=false;markClean('items')}
+function renderItems(){['#i-su1','#i-su2'].forEach(s=>{const v=$(s).value;$(s).innerHTML='<option value="">-</option>'+UNITS.map(u=>`<option>${u}</option>`).join('');$(s).value=v});const STK=stockMap();$('#i-body').innerHTML=[...S.items].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(i=>{const st=STK[i.name];return`<tr><td>${esc(i.name)}</td><td>${esc(i.spec)}</td><td>${esc(i.unit||'')}</td><td class="muted">${esc(subsTxt(i))}</td><td class="n">${num(i.price)?fmt(i.price):''}</td><td class="n">${num(i.cost)?fmt(i.cost):''}</td><td class="n">${st&&st.shown?fq(Math.round(st.qty*100)/100):''}</td><td><div class="acts"><button class="btn sub sm" data-a="e" data-id="${i.id}">수정</button><button class="btn del sm" data-a="d" data-id="${i.id}">삭제</button></div></td></tr>`}).join('')||'<tr><td colspan="8" class="muted">등록된 품목이 없어요</td></tr>'}
+function saveItem(){const name=$('#i-name').value.trim();if(!name){alert('품목명을 입력해주세요.');return false}let it=editI?S.items.find(x=>x.id===editI):null;if(!it){it={id:uid()};S.items.push(it)}it.name=name;it.spec=$('#i-spec').value.trim();it.unit=$('#i-unit').value;it.price=num($('#i-price').value);it.cost=num($('#i-cost').value);it.subs=[[$('#i-su1').value,$('#i-sp1').value],[$('#i-su2').value,$('#i-sp2').value]].filter(x=>x[0]&&num(x[1])>0).map(x=>({u:x[0],per:num(x[1])}));it.track=$('#i-track').checked;save();refreshLists();clearI();renderItems();toast('품목 저장했어요');return true}
 $('#i-save').onclick=saveItem;
 $('#i-cancel').onclick=clearI;
 $('#i-body').onclick=e=>{const b=e.target.closest('button');if(!b)return;const it=S.items.find(x=>x.id===b.dataset.id);if(!it)return;
-  if(b.dataset.a==='e'){editI=it.id;$('#i-name').value=it.name;$('#i-spec').value=it.spec||'';$('#i-unit').value=it.unit||'';$('#i-price').value=num(it.price)||'';markClean('items');winTop()}
+  if(b.dataset.a==='e'){editI=it.id;$('#i-name').value=it.name;$('#i-spec').value=it.spec||'';$('#i-unit').value=it.unit||'';$('#i-price').value=num(it.price)||'';$('#i-cost').value=num(it.cost)||'';const sb=it.subs||[];$('#i-su1').value=sb[0]?sb[0].u:'';$('#i-sp1').value=sb[0]?sb[0].per:'';$('#i-su2').value=sb[1]?sb[1].u:'';$('#i-sp2').value=sb[1]?sb[1].per:'';$('#i-track').checked=!!it.track;markClean('items');winTop()}
   if(b.dataset.a==='d'&&confirm(it.name+' 품목을 삭제할까요? (이미 쓴 명세서는 그대로 남아요)')){S.items=S.items.filter(x=>x.id!==it.id);save();refreshLists();renderItems()}};
 
 /* ---------- 설정 · 백업 ---------- */
 const SF=['name','bizno','ceo','tel','addr','biz','kind','bank'];
 function readPrintOpt(){S.opt.paper=$('#o-paper').value;S.opt.pmargin=$('#o-pmargin').value;S.opt.copies=$('#o-copies').value;S.opt.a5dir=$('#o-a5dir').value;S.opt.offX=num($('#o-offx').value);S.opt.offY=num($('#o-offy').value);S.opt.scale=Math.min(150,Math.max(30,num($('#o-scale').value)||100))}
 function sampleInv(){return{id:'_test',no:'테스트-001',date:today(),clientId:null,clientName:'테스트 거래처',taxMode:S.opt.defTax||'exempt',paid:0,created:Date.now(),rows:[{name:'백다다기오이',spec:'50개',qty:'10',unit:'박스',price:'23000',memo:'테스트'},{name:'애호박',spec:'20개',qty:'5',unit:'박스',price:'18500',memo:''},{name:'가지',spec:'',qty:'8',unit:'Kg',price:'3000',memo:''}]}}
-function renderSettings(){SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
+function renderSettings(){SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-risk').checked=S.opt.riskOn!==false;$('#o-ramt').value=S.opt.riskAmt??1000000;$('#o-rdays').value=S.opt.riskDays??30;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
   $('#bk-info').textContent=(IS_APP?`자료 위치: ${winPath(DATA_DIR)} (매일 자동백업은 backup 폴더) · `:'')+`현재 자료: 명세서 ${S.invoices.length}건 · 거래처 ${S.clients.length}곳 · 품목 ${S.items.length}개 · 입금 ${S.payments.length}건`}
-function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.imeKo=$('#o-ime').checked;if(S.opt.imeKo)imeInit();else imeStop();S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
+function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.imeKo=$('#o-ime').checked;S.opt.riskOn=$('#o-risk').checked;S.opt.riskAmt=num($('#o-ramt').value);S.opt.riskDays=num($('#o-rdays').value);if(S.opt.imeKo)imeInit();else imeStop();S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
 $('#s-save').onclick=saveSettings;
 $('#o-test').onclick=()=>{readPrintOpt();save();printInvs([sampleInv()])};
 $('#bk-down').onclick=async()=>{if(IS_APP){try{const p=await Neutralino.os.showSaveDialog('백업 파일 저장',{defaultPath:`거래명세서_백업_${today()}.json`,filters:[{name:'백업 파일',extensions:['json']}]});if(!p)return;await Neutralino.filesystem.writeFile(/\.json$/i.test(p)?p:p+'.json',JSON.stringify(S,null,1));toast('백업 파일을 저장했어요')}catch(e){alert('백업 저장에 실패했어요.')}return}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download=`거래명세서_백업_${today()}.json`;document.body.appendChild(a);a.click();a.remove();toast('백업 파일을 받았어요')};
@@ -1020,9 +1089,100 @@ $('#upd-check').onclick=()=>checkUpdate(true);
 function showWhatsNew(){const last=S.opt.lastVer;if(last===APP_VER)return;S.opt.lastVer=APP_VER;save();if(!last)return;
   const n=NOTICES.find(x=>x.ver===APP_VER);ask(`v${APP_VER}(으)로 업데이트됐어요! 🎉${n?`<ul style="margin:8px 0 0;padding-left:20px;line-height:1.6">${n.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`,[{label:'확인',val:'ok'}])}
 
+/* ---------- 미수 위험 표시 ---------- */
+const dayDiff=(a,b)=>Math.round((Date.parse(b+'T00:00:00')-Date.parse(a+'T00:00:00'))/86400000);
+var RISKC=null;
+function recvInfo(){if(RISKC)return RISKC;RISKC={};const R=RISKC;
+  S.invoices.forEach(i=>{if(kindOf(i)!=='sale')return;const o=R[i.clientId]=R[i.clientId]||{last:'',first:''};if(num(i.paid)>0&&i.date>o.last)o.last=i.date;if(!o.first||i.date<o.first)o.first=i.date});
+  S.payments.forEach(p=>{if(kindOf(p)!=='sale')return;const o=R[p.clientId]=R[p.clientId]||{last:'',first:''};if(p.date>o.last)o.last=p.date});return R}
+const lastRecv=cid=>(recvInfo()[cid]||{}).last||'';
+function riskOf(cid){if(S.opt.riskOn===false)return null;const bal=curBalance(cid,'sale');if(Math.round(bal)<=0)return null;
+  const amt=S.opt.riskAmt??1000000,days=S.opt.riskDays??30,o=recvInfo()[cid]||{},base=o.last||o.first,r=[];
+  if(amt>0&&bal>=amt)r.push(`잔액 ${fmt(bal)}원`);let d=null;if(base){d=dayDiff(base,today());if(days>0&&d>=days)r.push(o.last?`${d}일째 입금 없음`:`거래 후 ${d}일째 입금 없음`)}
+  return r.length?{why:r.join(' · '),days:d,bal}:null}
+function riskList(){return S.clients.map(c=>({c,r:riskOf(c.id)})).filter(x=>x.r).sort((a,b)=>b.r.bal-a.r.bal)}
+
+/* ---------- 품목 검색 · 거래 기록 ---------- */
+let isKind='all',isTimer=null,isPick='';
+document.querySelectorAll('#is-kind button').forEach(b=>b.onclick=()=>{isKind=b.dataset.k;document.querySelectorAll('#is-kind button').forEach(x=>x.classList.toggle('on',x===b));renderItemSearch()});
+$('#is-q').addEventListener('input',()=>{isPick='';clearTimeout(isTimer);isTimer=setTimeout(renderItemSearch,200)});
+$('#is-per').addEventListener('change',renderItemSearch);
+function renderItemSearch(){const q=$('#is-q').value.trim(),out=$('#is-out');if(!q){out.className='muted';out.innerHTML='품목 이름을 치면 그 글자가 들어간 품목과 거래 기록이 나와요.';return}
+  out.className='';const per=+$('#is-per').value,from=per?addDays(today(),-per):'',G={},H=[];
+  S.invoices.forEach(i=>{if(from&&i.date<from)return;const k=kindOf(i);if(isKind!=='all'&&k!==isKind)return;
+    i.rows.forEach(r=>{if(!r.name||!r.name.includes(q))return;const g=G[r.name]=G[r.name]||{name:r.name,sc:0,sq:0,sa:0,bc:0,bq:0,ba:0,last:'',lsp:null,lbp:null,lspd:'',lbpd:''};
+      const a=rowAmt(r),qq=num(r.qty);if(k==='sale'){g.sc++;g.sq+=qq;g.sa+=a;if(r.price!==''&&i.date>=g.lspd){g.lsp=num(r.price);g.lspd=i.date}}else{g.bc++;g.bq+=qq;g.ba+=a;if(r.price!==''&&i.date>=g.lbpd){g.lbp=num(r.price);g.lbpd=i.date}}
+      if(i.date>g.last)g.last=i.date;if(!isPick||isPick===r.name)H.push({i,r,k,a})})});
+  const gs=Object.values(G).sort((a,b)=>b.last<a.last?-1:1);
+  if(!gs.length){out.innerHTML=`<p class="muted">'${esc(q)}'이(가) 들어간 거래 기록이 없어요. (기간을 '전체 기간'으로 바꿔보세요)</p>`;return}
+  const STK=stockMap();H.sort((a,b)=>a.i.date<b.i.date?1:a.i.date>b.i.date?-1:b.i.created-a.i.created);
+  const MAX=300,hs=H.slice(0,MAX);
+  out.innerHTML=`<div class="tbl-wrap"><table class="t"><thead><tr><th>품목 (눌러서 골라보기)</th><th class="n">매출 횟수</th><th class="n">매출 수량</th><th class="n">최근 판매가</th><th class="n">매입 횟수</th><th class="n">최근 매입가</th><th class="n">현재 재고</th><th>마지막 거래</th></tr></thead><tbody>
+    ${gs.map(g=>{const st=STK[g.name];return`<tr class="is-g${isPick===g.name?' on':''}" data-n="${esc(g.name)}" style="cursor:pointer${isPick===g.name?';background:#e9f4ee':''}"><td><b>${esc(g.name)}</b></td><td class="n">${g.sc||''}</td><td class="n">${g.sc?fq(g.sq):''}</td><td class="n">${g.lsp!=null?fmt(g.lsp):''}</td><td class="n">${g.bc||''}</td><td class="n">${g.lbp!=null?fmt(g.lbp):''}</td><td class="n">${st&&st.shown?`<span style="${st.qty<0?'color:var(--warn)':''}">${fq(st.qty)} ${esc(st.unit||'')}</span>`:'<span class="muted">-</span>'}</td><td>${g.last}</td></tr>`}).join('')}</tbody></table></div>
+    <h3 style="font-size:14px;margin:14px 0 6px">거래 기록 ${isPick?`· ${esc(isPick)} <button class="btn sub sm" id="is-unpick">전체 보기</button>`:''} <span class="muted">(${fmt(H.length)}건${H.length>MAX?`, 최근 ${MAX}건만 표시`:''})</span></h3>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>날짜</th><th>구분</th><th>거래처</th><th>품목</th><th>규격</th><th class="n">수량</th><th class="n">단가</th><th class="n">금액</th><th>비고</th><th></th></tr></thead><tbody>
+    ${hs.map(x=>`<tr><td>${x.i.date}</td><td>${kTag(x.k)}</td><td>${esc(clientOf(x.i).name)}</td><td>${esc(x.r.name)}</td><td>${esc(x.r.spec||'')}</td><td class="n">${fq(x.r.qty)}${x.r.unit?' '+esc(x.r.unit):''}</td><td class="n">${x.r.price===''?'':fmt(x.r.price)}</td><td class="n">${fmt(x.a)}</td><td>${esc(x.r.memo||'')}</td><td><button class="btn sub sm" data-v="${x.i.id}">보기</button></td></tr>`).join('')}</tbody></table></div>`;
+  out.querySelectorAll('.is-g').forEach(tr=>tr.onclick=()=>{isPick=isPick===tr.dataset.n?'':tr.dataset.n;renderItemSearch()});
+  const un=$('#is-unpick');if(un)un.onclick=()=>{isPick='';renderItemSearch()};
+  out.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{const inv=S.invoices.find(i=>i.id===b.dataset.v);if(inv)preview([inv])})}
+
+/* ---------- 재고 ---------- */
+const itemOf=n=>S.items.find(i=>i.name===n);
+function toBase(name,qty,unit){const it=itemOf(name),q=num(qty);if(!it||!unit||!it.unit||unit===it.unit)return{q,ok:true};
+  const s=(it.subs||[]).find(x=>x.u===unit&&num(x.per)>0);if(s)return{q:q/num(s.per),ok:true};return{q,ok:false}}
+const invStart=()=>S.opt.invStart||'';
+var STKC=null;
+function stockMap(){if(STKC)return STKC;const M={},st=invStart();const g=n=>M[n]=M[n]||{name:n,inQ:0,outQ:0,adjQ:0,buyAmt:0,buyQ:0,inVal:0,last:'',lastP:null,bad:0,touched:false};
+  S.invoices.forEach(i=>{if(st&&i.date<st)return;const k=kindOf(i);i.rows.forEach(r=>{if(!r.name)return;const o=g(r.name),b=toBase(r.name,r.qty,r.unit);if(!b.ok)o.bad++;
+    if(k==='buy'){o.inQ+=b.q;o.buyQ+=b.q;o.buyAmt+=rowAmt(r);o.touched=true;if(i.date>=o.last){o.last=i.date;o.lastP=b.q?rowAmt(r)/b.q:null}}else o.outQ+=b.q})});
+  (S.adj||[]).forEach(a=>{if(st&&a.date<st)return;const o=g(a.name),b=toBase(a.name,a.qty,a.unit);o.adjQ+=b.q;o.touched=true;if(a.value&&b.q>0){o.inVal+=a.value;o.buyQ+=b.q;o.buyAmt+=a.value}});
+  for(const n in M){const o=M[n],it=itemOf(n);o.qty=o.inQ-o.outQ+o.adjQ;o.unit=it&&it.unit||'';o.spec=it&&it.spec||'';o.avg=o.buyQ>0?o.buyAmt/o.buyQ:(it&&num(it.cost)||0);o.shown=o.touched||!!(it&&it.track)}
+  (S.items||[]).forEach(it=>{if(it.track&&!M[it.name])M[it.name]={name:it.name,inQ:0,outQ:0,adjQ:0,qty:0,unit:it.unit||'',spec:it.spec||'',avg:num(it.cost),last:'',bad:0,shown:true}});
+  return STKC=M}
+const subsTxt=it=>(it&&it.subs||[]).filter(s=>s.u&&num(s.per)>0).map(s=>`1${it.unit||''}=${fq(s.per)}${s.u}`).join(', ');
+function fillUnitSel(sel,withNone=true){const v=sel.value;sel.innerHTML=(withNone?'<option value="">(기본 단위)</option>':'')+UNITS.map(u=>`<option>${u}</option>`).join('');sel.value=v}
+function renderStock(){const M=stockMap(),q=($('#st-q').value||'').trim(),all=$('#st-all').checked;
+  $('#st-since').textContent=invStart()?`(재고 계산 시작일: ${invStart()})`:'';
+  const rows=Object.values(M).filter(o=>(all||o.shown)&&(!q||o.name.includes(q))).sort((a,b)=>a.name.localeCompare(b.name,'ko'));let tv=0;
+  $('#st-table').innerHTML=`<thead><tr><th>품목</th><th>규격</th><th>소분</th><th class="n">입고</th><th class="n">판매</th><th class="n">조정·소분</th><th class="n">현재 재고</th><th class="n">평균 매입단가</th><th class="n">재고 금액</th><th>마지막 매입</th></tr></thead><tbody>${rows.map(o=>{const it=itemOf(o.name),v=o.qty>0?o.qty*o.avg:0;tv+=v;
+    return`<tr${o.qty<0?' style="background:#fdecec"':''}><td><b>${esc(o.name)}</b>${o.bad?` <span class="tag buy" title="품목에 없는 단위로 판 기록이 있어요. [품목]에서 소분 단위를 정해주세요">단위 확인 ${o.bad}</span>`:''}</td><td>${esc(o.spec)}</td><td class="muted">${esc(subsTxt(it))}</td><td class="n">${fq(o.inQ)}</td><td class="n">${fq(o.outQ)}</td><td class="n">${o.adjQ?fq(o.adjQ):''}</td><td class="n"><b style="${o.qty<0?'color:var(--warn)':''}">${fq(Math.round(o.qty*100)/100)} ${esc(o.unit)}</b></td><td class="n">${o.avg?fmt(o.avg):''}</td><td class="n">${v?fmt(v):''}</td><td>${o.last||''}</td></tr>`}).join('')||`<tr><td colspan="10" class="muted">재고로 관리하는 품목이 없어요. 아래 [매입 입력]이나 [조정 → 기초 재고]로 넣으면 여기 나와요.</td></tr>`}</tbody>${rows.length?`<tfoot><tr><td colspan="8">합계 ${rows.length}개 품목</td><td class="n">${fmt(tv)}</td><td></td></tr></tfoot>`:''}`;
+  ['#pi-unit','#sp-fu','#sp-tu','#aj-unit'].forEach(s=>fillUnitSel($(s)));
+  if(!$('#pi-date').value)$('#pi-date').value=today();$('#st-start').value=invStart();
+  const A=[...(S.adj||[])].sort((a,b)=>b.created-a.created).slice(0,30);
+  $('#aj-table').innerHTML=`<thead><tr><th>날짜</th><th>품목</th><th class="n">수량</th><th>내용</th><th></th></tr></thead><tbody>${A.map(a=>`<tr><td>${a.date}</td><td>${esc(a.name)}</td><td class="n" style="${num(a.qty)<0?'color:var(--warn)':''}">${num(a.qty)>0?'+':''}${fq(a.qty)} ${esc(a.unit||'')}</td><td>${esc(a.memo||'')}</td><td><button class="btn del sm" data-aj="${a.id}">삭제</button></td></tr>`).join('')||'<tr><td colspan="5" class="muted">기록이 없어요</td></tr>'}</tbody>`;
+  $('#aj-table').querySelectorAll('[data-aj]').forEach(b=>b.onclick=()=>{const a=S.adj.find(x=>x.id===b.dataset.aj);if(!a)return;const pair=a.link?S.adj.filter(x=>x.link===a.link):[a];
+    if(!confirm(pair.length>1?'이 소분 기록(나가고 들어온 것 2줄)을 같이 삭제할까요?':'이 조정 기록을 삭제할까요?'))return;const ids=new Set(pair.map(x=>x.id));S.adj=S.adj.filter(x=>!ids.has(x.id));save();renderStock()})}
+['#st-q','#st-all'].forEach(s=>$(s).addEventListener('input',renderStock));
+$('#st-start').addEventListener('change',e=>{S.opt.invStart=e.target.value;save();renderStock();toast('재고 계산 시작일을 바꿨어요')});
+const ensureItem=(name,unit)=>{let it=itemOf(name);if(!it){it={id:uid(),name,spec:'',unit:unit||'',price:0};S.items.push(it)}if(!it.unit&&unit)it.unit=unit;it.track=true;return it};
+$('#pi-name').addEventListener('change',()=>{const it=itemOf($('#pi-name').value.trim());if(!it)return;if(!$('#pi-spec').value)$('#pi-spec').value=it.spec||'';if(it.unit)$('#pi-unit').value=it.unit;if(!$('#pi-price').value&&num(it.cost))$('#pi-price').value=it.cost;
+  const st=stockMap()[it.name];$('#pi-hint').textContent=st&&st.shown?`지금 재고 ${fq(st.qty)} ${it.unit||''}`:''});
+$('#pi-save').onclick=()=>{const name=$('#pi-name').value.trim(),qty=$('#pi-qty').value;if(!name||!num(qty)){alert('품목과 수량을 넣어주세요.');return}
+  const cn=$('#pi-client').value.trim()||'(매입처 미지정)';let cl=S.clients.find(c=>c.name===cn);if(!cl){cl={id:uid(),name:cn,bizno:'',ceo:'',tel:'',addr:'',opening:0,openingBuy:0,memo:''};S.clients.push(cl)}
+  const unit=$('#pi-unit').value,price=$('#pi-price').value,date=$('#pi-date').value||today(),it=ensureItem(name,unit);
+  if(price!==''&&(!unit||unit===it.unit))it.cost=num(price);
+  const row={name,spec:$('#pi-spec').value.trim(),qty,price,unit:unit||it.unit||'',memo:''};row.amt=calcAmt(row.qty,row.price);
+  const inv={id:uid(),no:nextNo(date,'buy'),date,clientId:cl.id,kind:'buy',taxMode:'exempt',paid:num($('#pi-paid').value),rows:[row],created:Date.now()};S.invoices.push(inv);save();refreshLists();
+  ['#pi-name','#pi-spec','#pi-qty','#pi-price','#pi-paid'].forEach(s=>$(s).value='');$('#pi-hint').textContent='';renderStock();toast(`입고했어요 · ${name} ${fq(qty)}${row.unit} (No. ${inv.no})`);$('#pi-name').focus()};
+$('#sp-save').onclick=()=>{const f=$('#sp-from').value.trim(),t=$('#sp-to').value.trim(),fq_=num($('#sp-fq').value),tq=num($('#sp-tq').value);if(!f||!t||!fq_||!tq){alert('원래 품목·수량, 새 품목·수량을 모두 넣어주세요.');return}
+  const fit=ensureItem(f,$('#sp-fu').value),M=stockMap(),avg=(M[f]&&M[f].avg)||num(fit.cost),b=toBase(f,fq_,$('#sp-fu').value),value=Math.round(avg*b.q),link=uid(),date=today(),now=Date.now(),tu=$('#sp-tu').value,tit=ensureItem(t,tu);
+  if(!tit.unit&&tu)tit.unit=tu;if(value&&tq&&(!tu||tu===tit.unit))tit.cost=Math.round(value/tq);
+  S.adj=S.adj||[];S.adj.push({id:uid(),link,date,name:f,qty:-fq_,unit:$('#sp-fu').value,memo:`소분 → ${t} ${fq(tq)}${tu}`,created:now},{id:uid(),link,date,name:t,qty:tq,unit:tu,value,memo:`소분 ← ${f} ${fq(fq_)}${$('#sp-fu').value}`,created:now+1});
+  save();refreshLists();['#sp-from','#sp-fq','#sp-to','#sp-tq'].forEach(s=>$(s).value='');renderStock();toast('소분했어요')};
+$('#aj-save').onclick=()=>{const n=$('#aj-name').value.trim(),q=num($('#aj-qty').value);if(!n||!q){alert('품목과 수량(+/−)을 넣어주세요.');return}
+  const u=$('#aj-unit').value,it=ensureItem(n,u),why=$('#aj-why').value;S.adj=S.adj||[];S.adj.push({id:uid(),date:today(),name:n,qty:q,unit:u,value:why==='기초 재고'&&q>0?Math.round(q*num(it.cost)):0,memo:why,created:Date.now()});
+  save();refreshLists();['#aj-name','#aj-qty'].forEach(s=>$(s).value='');renderStock();toast('재고를 조정했어요')};
+$('#st-xlsx').onclick=()=>{const M=stockMap(),rows=Object.values(M).filter(o=>$('#st-all').checked||o.shown).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  const d={rows,cols:[{h:'품목',v:o=>o.name,w:18},{h:'규격',v:o=>o.spec,w:10},{h:'단위',v:o=>o.unit,w:6},{h:'입고',v:o=>o.inQ,n:1,q:1},{h:'판매',v:o=>o.outQ,n:1,q:1},{h:'조정·소분',v:o=>o.adjQ,n:1,q:1},{h:'현재 재고',v:o=>Math.round(o.qty*100)/100,n:1,q:1},{h:'평균 매입단가',v:o=>Math.round(o.avg||0),n:1},{h:'재고 금액',v:o=>o.qty>0?Math.round(o.qty*o.avg):0,n:1,s:1},{h:'마지막 매입',v:o=>o.last||'',w:11}]};
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,sheetOf(d),'재고');saveXlsx(wb,`재고현황_${today()}.xlsx`)};
+/* 재고·소분 입력칸 자동완성 */
+['#pi-name','#sp-from','#sp-to','#aj-name'].forEach(s=>{const inp=$(s);inp.addEventListener('input',()=>{const q=inp.value.trim();if(!q){acClose();return}
+  acOpen(inp,matchSort(S.items,i=>i.name,q),i=>{const st=stockMap()[i.name];return`<span>${esc(i.name)}</span><span class="m">${i.unit?`<span class="u">${esc(i.unit)}</span>`:''}${st&&st.shown?' · 재고 '+fq(Math.round(st.qty*100)/100):''}</span>`},it=>{inp.value=it.name;inp.dispatchEvent(new Event('change'));const u={'#sp-from':'#sp-fu','#sp-to':'#sp-tu','#aj-name':'#aj-unit'}[s];if(u&&it.unit)$(u).value=it.unit})});
+  inp.addEventListener('keydown',e=>acKey(e))});
+
 /* ---------- 시작 ---------- */
 (async function(){if(IS_APP){await appInit();$('#bk-open').classList.remove('hide');$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
-  const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-from').value=t.slice(0,8)+'01';$('#l-to').value=t;fillYears();refreshLists();newForm();setMode('month');renderSettings();markClean('clients');markClean('items');$('#app-ver').textContent='v'+APP_VER;$('#upd-ver').textContent='v'+APP_VER;tab('home');if(IS_APP){imeInit().then(()=>setTimeout(imeHangul,1200));showWhatsNew();setTimeout(()=>checkUpdate(false),3000)}})();
+  const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-from').value=t.slice(0,8)+'01';$('#l-to').value=t;fillYears();refreshLists();newForm();setMode('month');renderSettings();markClean('clients');markClean('items');if(!S.opt.invStart){S.opt.invStart=today();save()}$('#app-ver').textContent='v'+APP_VER;$('#upd-ver').textContent='v'+APP_VER;tab('home');if(IS_APP){imeInit().then(()=>setTimeout(imeHangul,1200));showWhatsNew();setTimeout(()=>checkUpdate(false),3000)}})();
 </script>
 </body>
 </html>
