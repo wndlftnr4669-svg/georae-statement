@@ -361,6 +361,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
   </div>
   <div class="row" style="gap:18px;margin-top:10px">
     <label class="chk"><input type="checkbox" id="o-bal"> 명세서에 전잔액 · 입금 · 잔액 표시</label>
+    <label class="chk"><input type="checkbox" id="o-ime"> 입력 칸은 한글로 시작</label>
     <label class="chk"><input type="checkbox" id="o-net"> 매출·매입 잔액을 하나로 합쳐서 계산 (거래돌이 방식)</label>
     <label class="chk"><input type="checkbox" id="o-mono"> 흑백 프린터용 (선을 검정으로)</label>
     <label class="chk">금액 계산 <select id="o-round" style="width:auto"><option value="none">원 단위 (반올림)</option><option value="floor10">10원 미만 버림</option></select></label>
@@ -514,10 +515,38 @@ $('#pv-print').onclick=()=>{$('#pv').classList.add('hide');printInvs(pvArr)};
 function cleanNum(el){const v=el.value,c=v.replace(/[^\d.,\-]/g,'');if(c!==v){const p=el.selectionStart-(v.length-c.length);el.value=c;try{el.setSelectionRange(Math.max(0,p),Math.max(0,p))}catch(e){}}}
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.num&&!e.isComposing)cleanNum(t)},true);
 document.addEventListener('compositionend',e=>{const t=e.target;if(t.dataset&&t.dataset.num)setTimeout(()=>{cleanNum(t);t.dispatchEvent(new Event('input',{bubbles:true}))},0)},true);
+/* ---------- 한글 입력으로 시작 (윈도우 IME를 한글 모드로) ---------- */
+const IME_PS=`$ErrorActionPreference='SilentlyContinue'
+Add-Type @"
+using System;using System.Text;using System.Runtime.InteropServices;
+public class GrImeK{
+ [StructLayout(LayoutKind.Sequential)] public struct RC{public int l,t,r,b;}
+ [StructLayout(LayoutKind.Sequential)] public struct GTI{public int cb;public int fl;public IntPtr a,f,c,m,s,k;public RC rc;}
+ [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+ [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr h,StringBuilder s,int n);
+ [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h,IntPtr p);
+ [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint t,ref GTI g);
+ [DllImport("imm32.dll")] static extern IntPtr ImmGetDefaultIMEWnd(IntPtr h);
+ [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr h,int m,IntPtr w,IntPtr l);
+ public static int Go(string title){IntPtr fg=GetForegroundWindow();var sb=new StringBuilder(256);GetWindowText(fg,sb,256);if(!sb.ToString().Contains(title))return -2;
+  GTI g=new GTI();g.cb=Marshal.SizeOf(g);IntPtr f=fg;if(GetGUIThreadInfo(GetWindowThreadProcessId(fg,IntPtr.Zero),ref g)&&g.f!=IntPtr.Zero)f=g.f;
+  IntPtr ime=ImmGetDefaultIMEWnd(f);if(ime==IntPtr.Zero)return -1;
+  SendMessage(ime,0x283,(IntPtr)6,(IntPtr)1);SendMessage(ime,0x283,(IntPtr)2,(IntPtr)1);return (int)SendMessage(ime,0x283,(IntPtr)1,IntPtr.Zero);}
+}
+"@
+[GrImeK]::Go('간편 거래명세서')`;
+let imeB64=null;
+function imeHangul(){if(!IS_APP||!S.opt.imeKo&&S.opt.imeKo!==undefined)return;try{
+  if(!imeB64){const u=new Uint8Array(IME_PS.length*2);for(let i=0;i<IME_PS.length;i++){const c=IME_PS.charCodeAt(i);u[i*2]=c&255;u[i*2+1]=c>>8}let bin='';u.forEach(b=>bin+=String.fromCharCode(b));imeB64=btoa(bin)}
+  Neutralino.os.execCommand(`powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand ${imeB64}`,{background:true})}catch(e){}}
+const imeDone={};
+document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
+
 /* ---------- 탭 ---------- */
-const APP_VER='2.0.1';
+const APP_VER='2.0.2';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정 · 백업] → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정 · 백업]의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.0.2',date:'2026-10-31',title:'한글로 시작',items:['명세서 작성 창을 열면 거래처 칸에 바로 커서가 가고, 입력이 한글로 시작해요. (다른 창도 처음 입력할 때 한글로 맞춰요)','영어가 필요하면 한/영 키로 바꾸면 되고, 바꾼 건 창을 닫을 때까지 그대로예요.','[설정] → \'입력 칸은 한글로 시작\'에서 끌 수 있어요.','업데이트를 올리자마자 바로 확인되게 고쳤어요.']},
  {ver:'2.0.1',date:'2026-10-30',title:'한글 입력 · 단위 망',items:['명세서 작성 중에 입력이 자꾸 영어로 바뀌던 문제를 고쳤어요. 이제 한/영은 키보드에서 바꾼 대로 유지돼요.','숫자 칸(수량 · 단가 · 입금액 등)은 한글 상태에서도 숫자가 그대로 들어가요.','단위에 \'망\'을 추가했어요. (수량 치고 Enter → 6번)']},
  {ver:'2.0',date:'2026-10-29',title:'자동 업데이트',items:['이제 프로그램을 켤 때 새 버전이 있으면 알려주고, [지금 업데이트]만 누르면 알아서 바뀌어요. 더 이상 파일을 새로 받을 필요가 없어요.','[설정 · 백업] → [지금 업데이트 확인]으로 직접 확인할 수도 있어요.','윈도우 백신이 프로그램을 잘못 지우는 일이 줄도록 프로그램 파일 구성을 바꿨어요.']},
  {ver:'1.9',date:'2026-10-29',title:'거래돌이 자료 가져오기',items:['[설정 · 백업] → [거래돌이 백업 파일 고르기]로 거래돌이 백업(.mdb)의 거래처, 품목, 매출 · 매입, 입금 · 지급 기록을 한 번에 옮겨올 수 있어요.','같은 파일을 다시 가져오면 겹치지 않고 새로 생긴 것만 더해져요.','[설정] → 금액 계산에서 \'10원 미만 버림\'을 고를 수 있어요. (거래돌이 자료를 가져오면 자동으로 맞춰져요)','[설정] → \'매출·매입 잔액을 하나로 합쳐서 계산\'을 켜면 거래돌이처럼 거래처마다 잔액 하나로 보여요. (거래돌이 자료를 가져오면 자동으로 켜져요)','자료가 많아도 빠르게 돌아가게 계산 방식을 손봤어요.']},
@@ -553,7 +582,7 @@ function renderHome(){const t=today(),m=t.slice(0,7);let tc=0,ts=0,tp=0,ms=0,mb=
   <div class="stat"><div class="k">전체 미지급 (줄 돈)</div><div class="v">${fmt(pay)}</div><div class="s">${payN}곳 · 원</div></div>`;
   $('#h-notice').innerHTML=NOTICES.map((n,k)=>`<details${n.pin||n.ver===APP_VER?' open':''}><summary>${n.pin?'<span class="tag pin">공지</span>':`<span class="tag${n.ver===APP_VER?' new':''}">${n.ver===APP_VER?'NEW ':''}v${n.ver}</span>`}<span class="t">${esc(n.title)}</span><span class="d">${n.date}</span></summary><ul>${n.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>`).join('')}
 let curTab='home';
-function tab(name){curTab=name;acClose();closeUnit();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));document.querySelectorAll('section[data-t]').forEach(s=>s.classList.toggle('hide',s.dataset.t!==name&&s.dataset.t!=='home'));$('#win-dim').classList.toggle('hide',name==='home');if(name==='home')renderHome();winTop();({list:()=>{fillYears();renderList()},clients:renderClients,items:renderItems,settings:renderSettings}[name]||(()=>{}))();winTop()}
+function tab(name){const prevTab=curTab;curTab=name;acClose();closeUnit();if(name==='home')for(const k in imeDone)delete imeDone[k];document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));document.querySelectorAll('section[data-t]').forEach(s=>s.classList.toggle('hide',s.dataset.t!==name&&s.dataset.t!=='home'));$('#win-dim').classList.toggle('hide',name==='home');if(name==='home')renderHome();winTop();({list:()=>{fillYears();renderList()},clients:renderClients,items:renderItems,settings:renderSettings}[name]||(()=>{}))();winTop()}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>goTab(b.dataset.t));
 /* ---------- 확인창 · 미저장 확인 ---------- */
 function ask(msg,btns){return new Promise(res=>{const m=document.createElement('div');m.className='modal';
@@ -567,7 +596,7 @@ function formSig(t){const v=id=>{const el=$(id);return el?(el.type==='checkbox'?
   if(t==='write')return JSON.stringify([v('#f-buy'),v('#f-client'),v('#f-tax'),v('#f-paid'),readRows()]);
   if(t==='clients')return JSON.stringify(CF.map(f=>v('#c-'+f)));
   if(t==='items')return JSON.stringify(['name','spec','unit','price'].map(f=>v('#i-'+f)));
-  if(t==='settings')return JSON.stringify([...SF.map(f=>v('#s-'+f)),...['#o-paper','#o-pmargin','#o-copies','#o-a5dir','#o-offx','#o-offy','#o-scale','#o-bal','#o-mono','#o-tax','#o-round','#o-net'].map(v)]);
+  if(t==='settings')return JSON.stringify([...SF.map(f=>v('#s-'+f)),...['#o-paper','#o-pmargin','#o-copies','#o-a5dir','#o-offx','#o-offy','#o-scale','#o-bal','#o-mono','#o-tax','#o-round','#o-net','#o-ime'].map(v)]);
   return ''}
 const base={};
 const markClean=t=>{base[t]=formSig(t)};
@@ -582,7 +611,7 @@ async function resolveDirty(t,how){if(!isDirty(t))return true;
 let asking=false;
 async function closeWin(){if(curTab==='home'||asking)return;asking=true;try{if(await resolveDirty(curTab,'닫기'))tab('home')}finally{asking=false}}
 document.addEventListener('keydown',e=>{if(e.key!=='Escape'||e.defaultPrevented)return;if(!$('#pv').classList.contains('hide')){$('#pv').classList.add('hide');return}if(ac||unitPop||document.querySelector('.modal'))return;if(curTab!=='home'){e.preventDefault();closeWin()}});
-async function goTab(n){if(n===curTab||asking)return;asking=true;try{if(await resolveDirty(curTab,'이동'))tab(n)}finally{asking=false}}
+async function goTab(n){if(n===curTab||asking)return;asking=true;try{if(await resolveDirty(curTab,'이동')){tab(n);if(n==='write'&&!editing){const f=$('#f-client');setTimeout(()=>{f.focus()},30)}}}finally{asking=false}}
 let closing=false;
 async function onCloseReq(){if(closing||asking)return;asking=true;
   try{let ok;if(isDirty(curTab))ok=await resolveDirty(curTab,'끄기');
@@ -870,9 +899,9 @@ $('#i-body').onclick=e=>{const b=e.target.closest('button');if(!b)return;const i
 const SF=['name','bizno','ceo','tel','addr','biz','kind','bank'];
 function readPrintOpt(){S.opt.paper=$('#o-paper').value;S.opt.pmargin=$('#o-pmargin').value;S.opt.copies=$('#o-copies').value;S.opt.a5dir=$('#o-a5dir').value;S.opt.offX=num($('#o-offx').value);S.opt.offY=num($('#o-offy').value);S.opt.scale=Math.min(150,Math.max(30,num($('#o-scale').value)||100))}
 function sampleInv(){return{id:'_test',no:'테스트-001',date:today(),clientId:null,clientName:'테스트 거래처',taxMode:S.opt.defTax||'exempt',paid:0,created:Date.now(),rows:[{name:'백다다기오이',spec:'50개',qty:'10',unit:'박스',price:'23000',memo:'테스트'},{name:'애호박',spec:'20개',qty:'5',unit:'박스',price:'18500',memo:''},{name:'가지',spec:'',qty:'8',unit:'Kg',price:'3000',memo:''}]}}
-function renderSettings(){SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
+function renderSettings(){SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
   $('#bk-info').textContent=(IS_APP?`자료 위치: ${winPath(DATA_DIR)} (매일 자동백업은 backup 폴더) · `:'')+`현재 자료: 명세서 ${S.invoices.length}건 · 거래처 ${S.clients.length}곳 · 품목 ${S.items.length}개 · 입금 ${S.payments.length}건`}
-function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
+function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.imeKo=$('#o-ime').checked;S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
 $('#s-save').onclick=saveSettings;
 $('#o-test').onclick=()=>{readPrintOpt();save();printInvs([sampleInv()])};
 $('#bk-down').onclick=async()=>{if(IS_APP){try{const p=await Neutralino.os.showSaveDialog('백업 파일 저장',{defaultPath:`거래명세서_백업_${today()}.json`,filters:[{name:'백업 파일',extensions:['json']}]});if(!p)return;await Neutralino.filesystem.writeFile(/\.json$/i.test(p)?p:p+'.json',JSON.stringify(S,null,1));toast('백업 파일을 저장했어요')}catch(e){alert('백업 저장에 실패했어요.')}return}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download=`거래명세서_백업_${today()}.json`;document.body.appendChild(a);a.click();a.remove();toast('백업 파일을 받았어요')};
@@ -955,11 +984,14 @@ $('#gd-import').onclick=async()=>{if(asking)return;asking=true;let b=null;
 
 /* ---------- 자동 업데이트 ---------- */
 const UPD_URL='https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/manifest.json';
+const UPD_API='https://api.github.com/repos/wndlftnr4669-svg/georae-statement/contents/update/';
+async function fetchFresh(name,rawUrl){try{const r=await fetch(UPD_API+name+'?ref=main&t='+Date.now(),{cache:'no-store',headers:{Accept:'application/vnd.github.raw'}});if(r.ok)return r}catch(e){}
+  const r=await fetch(rawUrl+(rawUrl.includes('?')?'&':'?')+'t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);return r}
 function verCmp(a,b){const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d>0?1:-1}return 0}
 async function sha256hex(buf){const h=await crypto.subtle.digest('SHA-256',buf);return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
 let updBusy=false;
 async function checkUpdate(manual){if(!IS_APP||updBusy)return;updBusy=true;let b=null,go=false;
-  try{const r=await fetch(UPD_URL+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const m=await r.json();
+  try{const r=await fetchFresh('manifest.json',UPD_URL);const m=JSON.parse(await r.text());
     if(verCmp(m.version,APP_VER)<=0){if(manual)await ask(`지금 쓰는 v${APP_VER}이 최신 버전이에요. 👍`,[{label:'확인',val:'ok'}]);return}
     if(m.minExe&&typeof NL_VERSION!=='undefined'&&verCmp(NL_VERSION,m.minExe)<0){await ask(`새 버전 v${esc(m.version)}이 나왔는데, 이번 건 프로그램을 새로 받아서 깔아야 해요.<br><span class="muted">${esc(m.download||'')}</span>`,[{label:'확인',val:'ok'}]);return}
     while(asking)await new Promise(r=>setTimeout(r,500));
@@ -969,7 +1001,7 @@ async function checkUpdate(manual){if(!IS_APP||updBusy)return;updBusy=true;let b
     if(v!=='go')return;go=true;
     if(curTab!=='home'&&!(await resolveDirty(curTab,'업데이트')))return;
     b=busy('새 버전을 받는 중이에요…');
-    const rr=await fetch(m.url+(m.url.includes('?')?'&':'?')+'t='+Date.now(),{cache:'no-store'});if(!rr.ok)throw new Error('다운로드 실패 HTTP '+rr.status);
+    const rr=await fetchFresh('resources.neu',m.url);
     const buf=await rr.arrayBuffer();
     if(m.size&&buf.byteLength!==m.size)throw new Error('받은 파일 크기가 달라요');
     if(m.sha256&&(await sha256hex(buf))!==m.sha256)throw new Error('받은 파일이 손상됐어요');
