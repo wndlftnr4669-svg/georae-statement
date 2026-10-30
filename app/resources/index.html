@@ -516,9 +516,8 @@ function cleanNum(el){const v=el.value,c=v.replace(/[^\d.,\-]/g,'');if(c!==v){co
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.num&&!e.isComposing)cleanNum(t)},true);
 document.addEventListener('compositionend',e=>{const t=e.target;if(t.dataset&&t.dataset.num)setTimeout(()=>{cleanNum(t);t.dispatchEvent(new Event('input',{bubbles:true}))},0)},true);
 /* ---------- 한글 입력으로 시작 (윈도우 IME를 한글 모드로) ---------- */
-const IME_PS=`$ErrorActionPreference='SilentlyContinue'
-Add-Type @"
-using System;using System.Text;using System.Runtime.InteropServices;
+/* 켤 때 PowerShell 하나를 미리 띄워두고(코드 미리 준비), 필요할 때 한 줄만 보내서 바로 바꿈 */
+const IME_CS=`using System;using System.Text;using System.Runtime.InteropServices;
 public class GrImeK{
  [StructLayout(LayoutKind.Sequential)] public struct RC{public int l,t,r,b;}
  [StructLayout(LayoutKind.Sequential)] public struct GTI{public int cb;public int fl;public IntPtr a,f,c,m,s,k;public RC rc;}
@@ -528,24 +527,29 @@ public class GrImeK{
  [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint t,ref GTI g);
  [DllImport("imm32.dll")] static extern IntPtr ImmGetDefaultIMEWnd(IntPtr h);
  [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr h,int m,IntPtr w,IntPtr l);
- public static int Go(string title){IntPtr fg=GetForegroundWindow();var sb=new StringBuilder(256);GetWindowText(fg,sb,256);if(!sb.ToString().Contains(title))return -2;
+ public static int Go(){IntPtr fg=GetForegroundWindow();var sb=new StringBuilder(256);GetWindowText(fg,sb,256);if(!sb.ToString().Contains("\\uAC70\\uB798\\uBA85\\uC138\\uC11C"))return -2;
   GTI g=new GTI();g.cb=Marshal.SizeOf(g);IntPtr f=fg;if(GetGUIThreadInfo(GetWindowThreadProcessId(fg,IntPtr.Zero),ref g)&&g.f!=IntPtr.Zero)f=g.f;
   IntPtr ime=ImmGetDefaultIMEWnd(f);if(ime==IntPtr.Zero)return -1;
   SendMessage(ime,0x283,(IntPtr)6,(IntPtr)1);SendMessage(ime,0x283,(IntPtr)2,(IntPtr)1);return (int)SendMessage(ime,0x283,(IntPtr)1,IntPtr.Zero);}
-}
-"@
-[GrImeK]::Go('간편 거래명세서')`;
-let imeB64=null;
-function imeHangul(){if(!IS_APP||!S.opt.imeKo&&S.opt.imeKo!==undefined)return;try{
-  if(!imeB64){const u=new Uint8Array(IME_PS.length*2);for(let i=0;i<IME_PS.length;i++){const c=IME_PS.charCodeAt(i);u[i*2]=c&255;u[i*2+1]=c>>8}let bin='';u.forEach(b=>bin+=String.fromCharCode(b));imeB64=btoa(bin)}
-  Neutralino.os.execCommand(`powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand ${imeB64}`,{background:true})}catch(e){}}
+}`;
+const imeOn=()=>IS_APP&&S.opt.imeKo!==false;
+const IME_ADD=()=>`Add-Type -TypeDefinition ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${btoa(IME_CS)}')))`;
+let imeProc=null,imeOut=0,imeEv=false;
+function imeExec(){try{const ps=IME_ADD()+'\n[GrImeK]::Go()';const u=new Uint8Array(ps.length*2);for(let i=0;i<ps.length;i++){const c=ps.charCodeAt(i);u[i*2]=c&255;u[i*2+1]=c>>8}let bin='';u.forEach(b=>bin+=String.fromCharCode(b));
+  Neutralino.os.execCommand(`powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand ${btoa(bin)}`,{background:true})}catch(e){}}
+async function imeInit(){if(!imeOn()||imeProc)return;try{if(!imeEv){imeEv=true;Neutralino.events.on('spawnedProcess',e=>{const d=e.detail||{};if(imeProc&&d.id===imeProc.id&&d.action==='stdOut')imeOut=Date.now()})}const p=await Neutralino.os.spawnProcess('powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command -');
+  await Neutralino.os.updateSpawnedProcess(p.id,'stdIn',IME_ADD()+'\n');imeProc=p}catch(e){imeProc=null}}
+function imeHangul(){if(!imeOn())return;if(imeProc){const t0=Date.now(),first=!imeOut;Neutralino.os.updateSpawnedProcess(imeProc.id,'stdIn','[GrImeK]::Go()\n').catch(()=>{imeProc=null;imeExec()});
+  setTimeout(()=>{if(imeProc&&imeOut<t0){imeStop();imeExec()}},first?6000:2500);return}imeExec()}
+function imeStop(){try{if(imeProc)Neutralino.os.updateSpawnedProcess(imeProc.id,'exit')}catch(e){}imeProc=null}
 const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.0.2';
+const APP_VER='2.0.3';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정 · 백업] → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정 · 백업]의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.0.3',date:'2026-10-31',title:'한글 전환 빠르게',items:['한글로 바뀌기까지 살짝 늦던 걸 빠르게 고쳤어요. 프로그램을 켤 때 미리 준비해두고, 켜자마자 한글로 맞춰요.']},
  {ver:'2.0.2',date:'2026-10-31',title:'한글로 시작',items:['명세서 작성 창을 열면 거래처 칸에 바로 커서가 가고, 입력이 한글로 시작해요. (다른 창도 처음 입력할 때 한글로 맞춰요)','영어가 필요하면 한/영 키로 바꾸면 되고, 바꾼 건 창을 닫을 때까지 그대로예요.','[설정] → \'입력 칸은 한글로 시작\'에서 끌 수 있어요.','업데이트를 올리자마자 바로 확인되게 고쳤어요.']},
  {ver:'2.0.1',date:'2026-10-30',title:'한글 입력 · 단위 망',items:['명세서 작성 중에 입력이 자꾸 영어로 바뀌던 문제를 고쳤어요. 이제 한/영은 키보드에서 바꾼 대로 유지돼요.','숫자 칸(수량 · 단가 · 입금액 등)은 한글 상태에서도 숫자가 그대로 들어가요.','단위에 \'망\'을 추가했어요. (수량 치고 Enter → 6번)']},
  {ver:'2.0',date:'2026-10-29',title:'자동 업데이트',items:['이제 프로그램을 켤 때 새 버전이 있으면 알려주고, [지금 업데이트]만 누르면 알아서 바뀌어요. 더 이상 파일을 새로 받을 필요가 없어요.','[설정 · 백업] → [지금 업데이트 확인]으로 직접 확인할 수도 있어요.','윈도우 백신이 프로그램을 잘못 지우는 일이 줄도록 프로그램 파일 구성을 바꿨어요.']},
@@ -616,7 +620,7 @@ let closing=false;
 async function onCloseReq(){if(closing||asking)return;asking=true;
   try{let ok;if(isDirty(curTab))ok=await resolveDirty(curTab,'끄기');
     else ok=(await ask('프로그램을 끌까요?',[{label:'끄기',val:'ok'},{label:'취소',val:'cancel',cls:'sub'}]))==='ok';
-    if(!ok)return;closing=true;try{await saving}catch(e){}Neutralino.app.exit()}finally{asking=false}}
+    if(!ok)return;closing=true;try{await saving}catch(e){}imeStop();Neutralino.app.exit()}finally{asking=false}}
 window.addEventListener('beforeunload',e=>{if(!IS_APP&&isDirty(curTab)){e.preventDefault();e.returnValue=''}});
 function refreshLists(){$('#dl-clients').innerHTML=S.clients.map(c=>`<option value="${esc(c.name)}">`).join('');$('#dl-items').innerHTML=S.items.map(i=>`<option value="${esc(i.name)}">${esc(i.spec||'')}</option>`).join('');$('#need-setup').classList.toggle('hide',!!S.company.name)}
 
@@ -901,7 +905,7 @@ function readPrintOpt(){S.opt.paper=$('#o-paper').value;S.opt.pmargin=$('#o-pmar
 function sampleInv(){return{id:'_test',no:'테스트-001',date:today(),clientId:null,clientName:'테스트 거래처',taxMode:S.opt.defTax||'exempt',paid:0,created:Date.now(),rows:[{name:'백다다기오이',spec:'50개',qty:'10',unit:'박스',price:'23000',memo:'테스트'},{name:'애호박',spec:'20개',qty:'5',unit:'박스',price:'18500',memo:''},{name:'가지',spec:'',qty:'8',unit:'Kg',price:'3000',memo:''}]}}
 function renderSettings(){SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
   $('#bk-info').textContent=(IS_APP?`자료 위치: ${winPath(DATA_DIR)} (매일 자동백업은 backup 폴더) · `:'')+`현재 자료: 명세서 ${S.invoices.length}건 · 거래처 ${S.clients.length}곳 · 품목 ${S.items.length}개 · 입금 ${S.payments.length}건`}
-function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.imeKo=$('#o-ime').checked;S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
+function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.imeKo=$('#o-ime').checked;if(S.opt.imeKo)imeInit();else imeStop();S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
 $('#s-save').onclick=saveSettings;
 $('#o-test').onclick=()=>{readPrintOpt();save();printInvs([sampleInv()])};
 $('#bk-down').onclick=async()=>{if(IS_APP){try{const p=await Neutralino.os.showSaveDialog('백업 파일 저장',{defaultPath:`거래명세서_백업_${today()}.json`,filters:[{name:'백업 파일',extensions:['json']}]});if(!p)return;await Neutralino.filesystem.writeFile(/\.json$/i.test(p)?p:p+'.json',JSON.stringify(S,null,1));toast('백업 파일을 저장했어요')}catch(e){alert('백업 저장에 실패했어요.')}return}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download=`거래명세서_백업_${today()}.json`;document.body.appendChild(a);a.click();a.remove();toast('백업 파일을 받았어요')};
@@ -1009,7 +1013,7 @@ async function checkUpdate(manual){if(!IS_APP||updBusy)return;updBusy=true;let b
     const P=NL_PATH+'/resources.neu';
     try{await Neutralino.filesystem.copy(P,P+'.bak')}catch(e){try{await Neutralino.filesystem.writeBinaryFile(P+'.bak',await Neutralino.filesystem.readBinaryFile(P))}catch(e2){}}
     await Neutralino.filesystem.writeBinaryFile(P,buf);
-    b.set('다시 켜는 중이에요…');await tick();await Neutralino.app.restartProcess()}
+    b.set('다시 켜는 중이에요…');imeStop();await tick();await Neutralino.app.restartProcess()}
   catch(e){if(b)b.close();b=null;if(manual||go)alert('업데이트를 확인하지 못했어요.\n인터넷 연결을 확인하고 다시 해주세요.\n('+(e.message||e)+')')}
   finally{if(b)b.close();updBusy=false}}
 $('#upd-check').onclick=()=>checkUpdate(true);
@@ -1018,7 +1022,7 @@ function showWhatsNew(){const last=S.opt.lastVer;if(last===APP_VER)return;S.opt.
 
 /* ---------- 시작 ---------- */
 (async function(){if(IS_APP){await appInit();$('#bk-open').classList.remove('hide');$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
-  const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-from').value=t.slice(0,8)+'01';$('#l-to').value=t;fillYears();refreshLists();newForm();setMode('month');renderSettings();markClean('clients');markClean('items');$('#app-ver').textContent='v'+APP_VER;$('#upd-ver').textContent='v'+APP_VER;tab('home');if(IS_APP){showWhatsNew();setTimeout(()=>checkUpdate(false),3000)}})();
+  const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-from').value=t.slice(0,8)+'01';$('#l-to').value=t;fillYears();refreshLists();newForm();setMode('month');renderSettings();markClean('clients');markClean('items');$('#app-ver').textContent='v'+APP_VER;$('#upd-ver').textContent='v'+APP_VER;tab('home');if(IS_APP){imeInit().then(()=>setTimeout(imeHangul,1200));showWhatsNew();setTimeout(()=>checkUpdate(false),3000)}})();
 </script>
 </body>
 </html>

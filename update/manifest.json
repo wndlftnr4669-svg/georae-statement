@@ -1,11 +1,10 @@
 {
- "version": "2.0.2",
+ "version": "2.0.3",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "5e266b73445dc3fbd31b8e72fb33d73dcd3eb8957e15b42c56d8e4ec6c198a14",
- "size": 689437,
+ "sha256": "9de9d3ebf36dccc4be76f4c9e32fa9f0c8ed2d689147c2b720c9f4a47cbd1397",
+ "size": 690818,
  "notes": [
-  "명세서 작성 창을 열면 한글 입력으로 시작",
-  "업데이트를 올리자마자 바로 확인되게 개선"
+  "한글로 바뀌는 속도 개선 (켤 때 미리 준비)"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"
