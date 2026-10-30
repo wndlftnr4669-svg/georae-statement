@@ -1,12 +1,10 @@
 {
- "version": "2.1",
+ "version": "2.1.1",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "277ea0a9d03d7affa20530b55bf327cf0c97eae6b651884813d815761127e567",
- "size": 716232,
+ "sha256": "9bd575e2296b49185071e7f8a0ede65ac3015642e59ed2f5236e2b1ad1797c9a",
+ "size": 715132,
  "notes": [
-  "품목 검색 · 지난 거래 기록 보기",
-  "미수 위험 거래처 빨간색 표시 (기준은 설정에서)",
-  "재고 메뉴: 매입 입력 · 재고 현황 · 소분 · 재고 조정"
+  "매입 입력을 명세서 작성과 같은 화면으로 통일"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"

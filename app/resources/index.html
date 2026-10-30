@@ -188,6 +188,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
   <h1 onclick="goTab('home')" title="첫 화면">간편 거래명세서<span class="ver" id="app-ver"></span></h1>
   <nav>
     <button data-t="write" class="on">명세서 작성</button>
+    <button data-t="buy">매입 입력</button>
     <button data-t="list">거래 내역</button>
     <button data-t="clients">거래처 · 미수</button>
     <button data-t="items">품목</button>
@@ -208,6 +209,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
       <p class="muted" style="margin:0 0 14px">메뉴를 누르면 창이 열려요. 다 쓰고 창 오른쪽 위 ✕ (또는 Esc)로 닫으면 돼요.</p>
       <div class="tiles">
         <button class="tile" onclick="goTab('write')"><span class="ic">📝</span><b>명세서 작성</b><span>새 거래명세서 쓰고 인쇄</span></button>
+        <button class="tile" onclick="goTab('buy')"><span class="ic">📥</span><b>매입 입력</b><span>산 물건 입력, 재고에 반영</span></button>
         <button class="tile" onclick="goTab('list')"><span class="ic">📋</span><b>거래 내역</b><span>일·월·연 검색, 엑셀 저장</span></button>
         <button class="tile" onclick="goTab('clients')"><span class="ic">🏪</span><b>거래처 · 미수</b><span>거래처 관리, 원장, 입금</span></button>
         <button class="tile" onclick="goTab('items')"><span class="ic">🥒</span><b>품목</b><span>품목·규격·단위·단가</span></button>
@@ -358,19 +360,9 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
   <div class="tbl-wrap"><table class="t" id="st-table"></table></div>
 </div>
 <div class="card">
-  <h2>➕ 매입 입력 (입고)</h2>
-  <p class="muted" style="margin-top:0">산 물건을 여기 넣으면 재고가 늘고, 매입 기록(매입처 미지급)에도 같이 들어가요. 여러 품목을 한 번에 넣을 땐 [명세서 작성]에서 [매입으로 기록]을 써도 돼요.</p>
-  <div class="grid">
-    <label>날짜<input type="date" id="pi-date"></label>
-    <label>매입처 (비워도 돼요)<input id="pi-client" autocomplete="off" placeholder="예: 김농부"></label>
-    <label>품목 *<input id="pi-name" autocomplete="off"></label>
-    <label>규격<input id="pi-spec" autocomplete="off"></label>
-    <label>수량 *<input id="pi-qty" class="n" autocomplete="off" data-num="1"></label>
-    <label>단위<select id="pi-unit"></select></label>
-    <label>매입단가<input id="pi-price" class="n" autocomplete="off" data-num="1"></label>
-    <label>이번에 준 돈<input id="pi-paid" class="n" autocomplete="off" data-num="1" placeholder="0"></label>
-  </div>
-  <div class="row" style="margin-top:10px"><button class="btn" id="pi-save">입고 저장</button><span class="muted" id="pi-hint"></span></div>
+  <div class="row" style="justify-content:space-between"><div><h2 style="margin:0 0 4px">📥 매입 입력 (입고)</h2>
+  <p class="muted" style="margin:0">명세서 작성이랑 똑같은 화면에서 여러 품목을 한 번에 넣을 수 있어요. 넣은 만큼 재고가 늘고, 매입처 미지급에도 같이 잡혀요.</p></div>
+  <button class="btn" onclick="goTab('buy')">매입 입력 열기</button></div>
 </div>
 <div class="card">
   <h2>✂️ 소분 · 재고 조정</h2>
@@ -609,9 +601,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.1';
+const APP_VER='2.1.1';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정 · 백업] → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정 · 백업]의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.1.1',date:'2026-10-31',title:'매입 입력 화면 통일',items:['위쪽 메뉴와 첫 화면에 [매입 입력]이 생겼어요. 명세서 작성이랑 똑같은 화면(여러 줄 · 방향키 · 단위 선택)으로 매입을 넣을 수 있어요.','[재고] 창의 [매입 입력 열기]를 눌러도 같은 화면이 열려요.']},
  {ver:'2.1',date:'2026-10-31',title:'품목 검색 · 미수 위험 · 재고',items:['[품목 · 검색]에서 \'백오이\'처럼 치면 그 글자가 들어간 품목과 지난 거래 기록(날짜 · 거래처 · 수량 · 단가)이 다 나와요. 최근 판매가 · 매입가도 같이 보여요.','미수 위험 표시: 잔액이 기준 이상이거나 마지막 입금 후 오래된 거래처를 빨간색으로 보여줘요. 기준 금액 · 기간은 [설정]에서 정할 수 있어요.','새 [재고] 메뉴: 매입 입력(입고, 매입단가 포함) · 재고 현황 · 소분 · 재고 조정. 명세서를 쓰거나 고치거나 지우면 재고도 자동으로 맞춰져요.','[품목]에서 소분 단위(예: 1박스 = 10Kg)를 정하면, Kg로 팔아도 재고에서 박스로 바꿔서 빠져요.']},
  {ver:'2.0.3',date:'2026-10-31',title:'한글 전환 빠르게',items:['한글로 바뀌기까지 살짝 늦던 걸 빠르게 고쳤어요. 프로그램을 켤 때 미리 준비해두고, 켜자마자 한글로 맞춰요.']},
  {ver:'2.0.2',date:'2026-10-31',title:'한글로 시작',items:['명세서 작성 창을 열면 거래처 칸에 바로 커서가 가고, 입력이 한글로 시작해요. (다른 창도 처음 입력할 때 한글로 맞춰요)','영어가 필요하면 한/영 키로 바꾸면 되고, 바꾼 건 창을 닫을 때까지 그대로예요.','[설정] → \'입력 칸은 한글로 시작\'에서 끌 수 있어요.','업데이트를 올리자마자 바로 확인되게 고쳤어요.']},
@@ -680,7 +673,9 @@ async function resolveDirty(t,how){if(!isDirty(t))return true;
 let asking=false;
 async function closeWin(){if(curTab==='home'||asking)return;asking=true;try{if(await resolveDirty(curTab,'닫기'))tab('home')}finally{asking=false}}
 document.addEventListener('keydown',e=>{if(e.key!=='Escape'||e.defaultPrevented)return;if(!$('#pv').classList.contains('hide')){$('#pv').classList.add('hide');return}if(ac||unitPop||document.querySelector('.modal'))return;if(curTab!=='home'){e.preventDefault();closeWin()}});
-async function goTab(n){if(n===curTab||asking)return;asking=true;try{if(await resolveDirty(curTab,'이동')){tab(n);if(n==='write'&&!editing){const f=$('#f-client');setTimeout(()=>{f.focus()},30)}}}finally{asking=false}}
+async function goTab(n){const mode=n==='buy'?'buy':n==='write'?'sale':null,t=n==='buy'?'write':n;if(asking)return;
+  if(t===curTab){if(mode&&!editing&&$('#f-buy').checked!==(mode==='buy')){$('#f-buy').checked=mode==='buy';setBuyUI();setTimeout(()=>$('#f-client').focus(),30)}return}
+  asking=true;try{if(await resolveDirty(curTab,'이동')){tab(t);if(mode&&!editing){$('#f-buy').checked=mode==='buy';setBuyUI();markClean('write')}if(t==='write'&&!editing){const f=$('#f-client');setTimeout(()=>{f.focus()},30)}}}finally{asking=false}}
 let closing=false;
 async function onCloseReq(){if(closing||asking)return;asking=true;
   try{let ok;if(isDirty(curTab))ok=await resolveDirty(curTab,'끄기');
@@ -761,7 +756,8 @@ function recalc(){[...$('#rows tbody').children].forEach(tr=>tr.querySelector('.
   $('#f-sum').innerHTML=`<span>${tax?'공급가액':'금액'} <b>${fmt(T.supply)}</b></span>${tax?`<span>세액 <b>${fmt(T.tax)}</b></span>`:''}<span>합계 <b>${fmt(T.total)}</b>원</span><span class="muted">│</span><span>${buy?'전 미지급':'전잔액'} <b>${fmt(prev)}</b></span><span>${buy?'지급':'입금'} <b>${fmt(inv.paid)}</b></span><span>${buy?'미지급 잔액':'잔액'} <b>${fmt(bal)}</b>원</span>`}
 function setBuyUI(){const b=$('#f-buy').checked,card=$('#f-buy').closest('.card');card.classList.toggle('buymode',b);
   $('#f-client-lbl').textContent=b?'매입처 (산 곳 · 공급자)':'거래처 (공급받는자)';$('#f-paid-lbl').textContent=b?'이번에 준 돈 (지급액)':'이번에 받은 돈 (입금액)';
-  $('#w-title').textContent=(editing?(b?'매입 기록 수정':'거래명세서 수정')+' · No. '+(S.invoices.find(i=>i.id===editing)||{}).no:(b?'매입 기록':'거래명세서 작성'));recalc()}
+  $('#w-title').textContent=(editing?(b?'매입 기록 수정':'거래명세서 수정')+' · No. '+(S.invoices.find(i=>i.id===editing)||{}).no:(b?'매입 기록':'거래명세서 작성'));const wt=document.querySelector('section[data-t="write"] .win-title');if(wt)wt.textContent=b?'📥 매입 입력':'📝 명세서 작성';
+  if(curTab==='write')document.querySelectorAll('nav button').forEach(x=>{if(x.dataset.t==='write')x.classList.toggle('on',!b);if(x.dataset.t==='buy')x.classList.toggle('on',b)});recalc()}
 $('#f-buy').addEventListener('change',setBuyUI);
 function newForm(keepKind){editing=null;if(!keepKind)$('#f-buy').checked=false;$('#f-date').value=today();$('#f-client').value='';$('#f-tax').value=S.opt.defTax||'exempt';$('#f-paid').value='';$('#rows tbody').innerHTML='';for(let i=0;i<4;i++)addRow();setBuyUI();markClean('write')}
 function loadForm(inv){editing=inv.id;$('#f-buy').checked=kindOf(inv)==='buy';$('#f-date').value=inv.date;$('#f-client').value=clientOf(inv).name;$('#f-tax').value=inv.taxMode;$('#f-paid').value=inv.paid||'';$('#rows tbody').innerHTML='';inv.rows.forEach(r=>addRow(r));addRow();tab('write');setBuyUI();markClean('write')}
@@ -1146,8 +1142,8 @@ function renderStock(){const M=stockMap(),q=($('#st-q').value||'').trim(),all=$(
   const rows=Object.values(M).filter(o=>(all||o.shown)&&(!q||o.name.includes(q))).sort((a,b)=>a.name.localeCompare(b.name,'ko'));let tv=0;
   $('#st-table').innerHTML=`<thead><tr><th>품목</th><th>규격</th><th>소분</th><th class="n">입고</th><th class="n">판매</th><th class="n">조정·소분</th><th class="n">현재 재고</th><th class="n">평균 매입단가</th><th class="n">재고 금액</th><th>마지막 매입</th></tr></thead><tbody>${rows.map(o=>{const it=itemOf(o.name),v=o.qty>0?o.qty*o.avg:0;tv+=v;
     return`<tr${o.qty<0?' style="background:#fdecec"':''}><td><b>${esc(o.name)}</b>${o.bad?` <span class="tag buy" title="품목에 없는 단위로 판 기록이 있어요. [품목]에서 소분 단위를 정해주세요">단위 확인 ${o.bad}</span>`:''}</td><td>${esc(o.spec)}</td><td class="muted">${esc(subsTxt(it))}</td><td class="n">${fq(o.inQ)}</td><td class="n">${fq(o.outQ)}</td><td class="n">${o.adjQ?fq(o.adjQ):''}</td><td class="n"><b style="${o.qty<0?'color:var(--warn)':''}">${fq(Math.round(o.qty*100)/100)} ${esc(o.unit)}</b></td><td class="n">${o.avg?fmt(o.avg):''}</td><td class="n">${v?fmt(v):''}</td><td>${o.last||''}</td></tr>`}).join('')||`<tr><td colspan="10" class="muted">재고로 관리하는 품목이 없어요. 아래 [매입 입력]이나 [조정 → 기초 재고]로 넣으면 여기 나와요.</td></tr>`}</tbody>${rows.length?`<tfoot><tr><td colspan="8">합계 ${rows.length}개 품목</td><td class="n">${fmt(tv)}</td><td></td></tr></tfoot>`:''}`;
-  ['#pi-unit','#sp-fu','#sp-tu','#aj-unit'].forEach(s=>fillUnitSel($(s)));
-  if(!$('#pi-date').value)$('#pi-date').value=today();$('#st-start').value=invStart();
+  ['#sp-fu','#sp-tu','#aj-unit'].forEach(s=>fillUnitSel($(s)));
+  $('#st-start').value=invStart();
   const A=[...(S.adj||[])].sort((a,b)=>b.created-a.created).slice(0,30);
   $('#aj-table').innerHTML=`<thead><tr><th>날짜</th><th>품목</th><th class="n">수량</th><th>내용</th><th></th></tr></thead><tbody>${A.map(a=>`<tr><td>${a.date}</td><td>${esc(a.name)}</td><td class="n" style="${num(a.qty)<0?'color:var(--warn)':''}">${num(a.qty)>0?'+':''}${fq(a.qty)} ${esc(a.unit||'')}</td><td>${esc(a.memo||'')}</td><td><button class="btn del sm" data-aj="${a.id}">삭제</button></td></tr>`).join('')||'<tr><td colspan="5" class="muted">기록이 없어요</td></tr>'}</tbody>`;
   $('#aj-table').querySelectorAll('[data-aj]').forEach(b=>b.onclick=()=>{const a=S.adj.find(x=>x.id===b.dataset.aj);if(!a)return;const pair=a.link?S.adj.filter(x=>x.link===a.link):[a];
@@ -1155,15 +1151,6 @@ function renderStock(){const M=stockMap(),q=($('#st-q').value||'').trim(),all=$(
 ['#st-q','#st-all'].forEach(s=>$(s).addEventListener('input',renderStock));
 $('#st-start').addEventListener('change',e=>{S.opt.invStart=e.target.value;save();renderStock();toast('재고 계산 시작일을 바꿨어요')});
 const ensureItem=(name,unit)=>{let it=itemOf(name);if(!it){it={id:uid(),name,spec:'',unit:unit||'',price:0};S.items.push(it)}if(!it.unit&&unit)it.unit=unit;it.track=true;return it};
-$('#pi-name').addEventListener('change',()=>{const it=itemOf($('#pi-name').value.trim());if(!it)return;if(!$('#pi-spec').value)$('#pi-spec').value=it.spec||'';if(it.unit)$('#pi-unit').value=it.unit;if(!$('#pi-price').value&&num(it.cost))$('#pi-price').value=it.cost;
-  const st=stockMap()[it.name];$('#pi-hint').textContent=st&&st.shown?`지금 재고 ${fq(st.qty)} ${it.unit||''}`:''});
-$('#pi-save').onclick=()=>{const name=$('#pi-name').value.trim(),qty=$('#pi-qty').value;if(!name||!num(qty)){alert('품목과 수량을 넣어주세요.');return}
-  const cn=$('#pi-client').value.trim()||'(매입처 미지정)';let cl=S.clients.find(c=>c.name===cn);if(!cl){cl={id:uid(),name:cn,bizno:'',ceo:'',tel:'',addr:'',opening:0,openingBuy:0,memo:''};S.clients.push(cl)}
-  const unit=$('#pi-unit').value,price=$('#pi-price').value,date=$('#pi-date').value||today(),it=ensureItem(name,unit);
-  if(price!==''&&(!unit||unit===it.unit))it.cost=num(price);
-  const row={name,spec:$('#pi-spec').value.trim(),qty,price,unit:unit||it.unit||'',memo:''};row.amt=calcAmt(row.qty,row.price);
-  const inv={id:uid(),no:nextNo(date,'buy'),date,clientId:cl.id,kind:'buy',taxMode:'exempt',paid:num($('#pi-paid').value),rows:[row],created:Date.now()};S.invoices.push(inv);save();refreshLists();
-  ['#pi-name','#pi-spec','#pi-qty','#pi-price','#pi-paid'].forEach(s=>$(s).value='');$('#pi-hint').textContent='';renderStock();toast(`입고했어요 · ${name} ${fq(qty)}${row.unit} (No. ${inv.no})`);$('#pi-name').focus()};
 $('#sp-save').onclick=()=>{const f=$('#sp-from').value.trim(),t=$('#sp-to').value.trim(),fq_=num($('#sp-fq').value),tq=num($('#sp-tq').value);if(!f||!t||!fq_||!tq){alert('원래 품목·수량, 새 품목·수량을 모두 넣어주세요.');return}
   const fit=ensureItem(f,$('#sp-fu').value),M=stockMap(),avg=(M[f]&&M[f].avg)||num(fit.cost),b=toBase(f,fq_,$('#sp-fu').value),value=Math.round(avg*b.q),link=uid(),date=today(),now=Date.now(),tu=$('#sp-tu').value,tit=ensureItem(t,tu);
   if(!tit.unit&&tu)tit.unit=tu;if(value&&tq&&(!tu||tu===tit.unit))tit.cost=Math.round(value/tq);
@@ -1176,7 +1163,7 @@ $('#st-xlsx').onclick=()=>{const M=stockMap(),rows=Object.values(M).filter(o=>$(
   const d={rows,cols:[{h:'품목',v:o=>o.name,w:18},{h:'규격',v:o=>o.spec,w:10},{h:'단위',v:o=>o.unit,w:6},{h:'입고',v:o=>o.inQ,n:1,q:1},{h:'판매',v:o=>o.outQ,n:1,q:1},{h:'조정·소분',v:o=>o.adjQ,n:1,q:1},{h:'현재 재고',v:o=>Math.round(o.qty*100)/100,n:1,q:1},{h:'평균 매입단가',v:o=>Math.round(o.avg||0),n:1},{h:'재고 금액',v:o=>o.qty>0?Math.round(o.qty*o.avg):0,n:1,s:1},{h:'마지막 매입',v:o=>o.last||'',w:11}]};
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,sheetOf(d),'재고');saveXlsx(wb,`재고현황_${today()}.xlsx`)};
 /* 재고·소분 입력칸 자동완성 */
-['#pi-name','#sp-from','#sp-to','#aj-name'].forEach(s=>{const inp=$(s);inp.addEventListener('input',()=>{const q=inp.value.trim();if(!q){acClose();return}
+['#sp-from','#sp-to','#aj-name'].forEach(s=>{const inp=$(s);inp.addEventListener('input',()=>{const q=inp.value.trim();if(!q){acClose();return}
   acOpen(inp,matchSort(S.items,i=>i.name,q),i=>{const st=stockMap()[i.name];return`<span>${esc(i.name)}</span><span class="m">${i.unit?`<span class="u">${esc(i.unit)}</span>`:''}${st&&st.shown?' · 재고 '+fq(Math.round(st.qty*100)/100):''}</span>`},it=>{inp.value=it.name;inp.dispatchEvent(new Event('change'));const u={'#sp-from':'#sp-fu','#sp-to':'#sp-tu','#aj-name':'#aj-unit'}[s];if(u&&it.unit)$(u).value=it.unit})});
   inp.addEventListener('keydown',e=>acKey(e))});
 
