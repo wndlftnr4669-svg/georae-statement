@@ -611,9 +611,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.2';
+const APP_VER='2.2.1';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정] → 백업 → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정] → 백업의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.2.1',date:'2026-11-02',title:'초성 검색',items:['거래처 · 품목을 입력할 때 초성만 쳐도 목록이 떠요. (예: ㅂㅇ → 백오이, ㄷㅈㅁㅌ → 대전마트, 백ㅇ처럼 섞어도 돼요)','거래 내역 · 거래처 · 품목 · 재고 검색칸도 초성으로 찾을 수 있어요.']},
  {ver:'2.2',date:'2026-11-01',title:'더 크고 단순하게',items:['글자와 버튼을 키우고, 메뉴 이름을 짧게 바꿨어요. (매입 작성 · 거래처 · 설정)','명세서 작성의 [매입으로 기록] 체크는 없앴어요. 산 물건은 [매입 작성] 메뉴에서 적으면 돼요.','재고에서 소분은 빼고 [재고 맞추기]만 남겼어요.','설정은 묶음별로 접어두고, 바꾸면 바로 저장되게 했어요. 부가세 칸은 쓰는 분만 켜면 보여요.']},
  {ver:'2.1.1',date:'2026-10-31',title:'매입 입력 화면 통일',items:['위쪽 메뉴와 첫 화면에 [매입 입력]이 생겼어요. 명세서 작성이랑 똑같은 화면(여러 줄 · 방향키 · 단위 선택)으로 매입을 넣을 수 있어요.','[재고] 창의 [매입 입력 열기]를 눌러도 같은 화면이 열려요.']},
  {ver:'2.1',date:'2026-10-31',title:'품목 검색 · 미수 위험 · 재고',items:['[품목 · 검색]에서 \'백오이\'처럼 치면 그 글자가 들어간 품목과 지난 거래 기록(날짜 · 거래처 · 수량 · 단가)이 다 나와요. 최근 판매가 · 매입가도 같이 보여요.','미수 위험 표시: 잔액이 기준 이상이거나 마지막 입금 후 오래된 거래처를 빨간색으로 보여줘요. 기준 금액 · 기간은 [설정]에서 정할 수 있어요.','새 [재고] 메뉴: 매입 입력(입고, 매입단가 포함) · 재고 현황 · 소분 · 재고 조정. 명세서를 쓰거나 고치거나 지우면 재고도 자동으로 맞춰져요.','[품목]에서 소분 단위(예: 1박스 = 10Kg)를 정하면, Kg로 팔아도 재고에서 박스로 바꿔서 빠져요.']},
@@ -720,7 +721,13 @@ function acKey(e){if(!ac||e.target!==ac.inp)return false;const n=ac.list.length;
   e.preventDefault();return true}
 document.addEventListener('mousedown',e=>{if(ac&&!ac.pop.contains(e.target)&&e.target!==ac.inp)acClose()});
 document.addEventListener('focusout',e=>{if(ac&&e.target===ac.inp)setTimeout(()=>{if(ac&&document.activeElement!==ac.inp)acClose()},0)});
-function matchSort(arr,key,q){return arr.filter(x=>key(x).includes(q)).sort((a,b)=>(key(a).startsWith(q)?0:1)-(key(b).startsWith(q)?0:1)||key(a).length-key(b).length||key(a).localeCompare(key(b),'ko')).slice(0,8)}
+/* 초성 검색: 'ㅂㅇ' → 백오이, '백ㅇ' 처럼 섞어 써도 됨 */
+const CHO='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+const choOf=c=>{const k=c.charCodeAt(0)-0xAC00;return k>=0&&k<11172?CHO[Math.floor(k/588)]:c};
+function hIdx(name,q){name=String(name||'');if(!q)return 0;const i=name.indexOf(q);if(i>=0)return i;if(!/[ㄱ-ㅎ]/.test(q))return -1;
+  const n=name.length,m=q.length;for(let s=0;s+m<=n;s++){let ok=true;for(let j=0;j<m;j++){const a=name[s+j],b=q[j];if(a===b)continue;if(CHO.includes(b)&&choOf(a)===b)continue;ok=false;break}if(ok)return s}return -1}
+const hHas=(name,q)=>hIdx(name,q)>=0;
+function matchSort(arr,key,q){return arr.map(x=>({x,i:hIdx(key(x),q)})).filter(o=>o.i>=0).sort((a,b)=>(a.i===0?0:1)-(b.i===0?0:1)||key(a.x).length-key(b.x).length||key(a.x).localeCompare(key(b.x),'ko')).slice(0,8).map(o=>o.x)}
 function fillItem(tr,it,overwrite){const sp=tr.querySelector('.i-spec'),pr=tr.querySelector('.i-price');tr.querySelector('.i-name').value=it.name;
   if(overwrite||!sp.value)sp.value=it.spec||'';if(it.unit&&(overwrite||!tr.dataset.unit))setUnit(tr,it.unit);const P=$('#f-buy').checked&&num(it.cost)?it.cost:it.price;if(!pr.value&&num(P))pr.value=P;recalc()}
 function itemAC(inp){const q=inp.value.trim();if(!q){acClose();return}
@@ -832,9 +839,9 @@ $('#l-clear').onclick=()=>{$('#l-client').value='';$('#l-item').value='';renderL
 const inPer=(d,P)=>(!P.f||d>=P.f)&&(!P.t||d<=P.t);
 const kindOk=x=>lKind==='all'||kindOf(x)===lKind;
 function listArr(){const P=period(),q=$('#l-client').value.trim(),it=$('#l-item').value.trim();
-  return S.invoices.filter(i=>kindOk(i)&&inPer(i.date,P)&&(!q||clientOf(i).name.includes(q))&&(!it||i.rows.some(r=>r.name.includes(it)))).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:b.created-a.created)}
-function payArr(){const P=period(),q=$('#l-client').value.trim();if($('#l-item').value.trim())return[];return S.payments.filter(p=>kindOk(p)&&inPer(p.date,P)&&(!q||(S.clients.find(c=>c.id===p.clientId)||{name:''}).name.includes(q)))}
-function rowsOf(arr){const it=$('#l-item').value.trim(),out=[];arr.forEach(i=>i.rows.forEach(r=>{if(it&&!r.name.includes(it))return;const a=rowAmt(r);out.push({inv:i,kind:kindOf(i),r,amt:a,tax:i.taxMode==='add10'?Math.round(a*.1):0})}));return out}
+  return S.invoices.filter(i=>kindOk(i)&&inPer(i.date,P)&&(!q||hHas(clientOf(i).name,q))&&(!it||i.rows.some(r=>hHas(r.name,it)))).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:b.created-a.created)}
+function payArr(){const P=period(),q=$('#l-client').value.trim();if($('#l-item').value.trim())return[];return S.payments.filter(p=>kindOk(p)&&inPer(p.date,P)&&(!q||hHas((S.clients.find(c=>c.id===p.clientId)||{name:''}).name,q)))}
+function rowsOf(arr){const it=$('#l-item').value.trim(),out=[];arr.forEach(i=>i.rows.forEach(r=>{if(it&&!hHas(r.name,it))return;const a=rowAmt(r);out.push({inv:i,kind:kindOf(i),r,amt:a,tax:i.taxMode==='add10'?Math.round(a*.1):0})}));return out}
 const zero=()=>({saleCnt:0,sale:0,saleIn:0,buyCnt:0,buy:0,buyOut:0});
 function addTo(o,k,total,paid,isInv){if(k==='sale'){if(isInv){o.saleCnt++;o.sale+=total}o.saleIn+=paid}else{if(isInv){o.buyCnt++;o.buy+=total}o.buyOut+=paid}}
 function groups(arr,pays){const byMon=lMode==='year'||lMode==='all',cl={},dt={},im={};
@@ -920,7 +927,7 @@ let editC=null;
 const CF=['name','bizno','ceo','tel','addr','opening','openingBuy','memo'];
 function clearC(){editC=null;CF.forEach(f=>$('#c-'+f).value='');$('#c-title').textContent='거래처 등록';markClean('clients')}
 function renderClients(){let tot=0,totB=0;
-  const cq=($('#c-search').value||'').trim(),onlyRisk=$('#c-risk').checked;$('#c-body').innerHTML=[...S.clients].filter(c=>!cq||[c.name,c.ceo,c.tel,c.bizno].some(v=>String(v||'').includes(cq))).map(c=>({c,r:riskOf(c.id)})).filter(x=>!onlyRisk||x.r).sort((a,b)=>onlyRisk?b.r.bal-a.r.bal:a.c.name.localeCompare(b.c.name,'ko')).map(({c,r})=>{const b=curBalance(c.id),q=curBalance(c.id,'buy');tot+=b;totB+=q;return`<tr${r?' class="risk"':''}><td>${r?'⚠ ':''}${esc(c.name)}</td><td>${esc(c.tel)}</td><td class="n"><b${r?' style="color:var(--warn)"':''}>${fmt(b)}</b></td><td class="n">${Math.round(q)?`<b style="color:#b45309">${fmt(q)}</b>`:'0'}</td><td>${lastRecv(c.id)||'<span class="muted">없음</span>'}</td><td>${r?`<span class="rk">${esc(r.why)}</span>`:''}</td><td><div class="acts"><button class="btn sub sm" data-a="l" data-id="${c.id}">원장 · 입금/지급</button><button class="btn sub sm" data-a="e" data-id="${c.id}">수정</button><button class="btn del sm" data-a="d" data-id="${c.id}">삭제</button></div></td></tr>`}).join('')||'<tr><td colspan="7" class="muted">'+(onlyRisk?'위험 거래처가 없어요. 👍':'등록된 거래처가 없어요. 명세서를 쓰면 자동으로 추가돼요.')+'</td></tr>';
+  const cq=($('#c-search').value||'').trim(),onlyRisk=$('#c-risk').checked;$('#c-body').innerHTML=[...S.clients].filter(c=>!cq||[c.name,c.ceo,c.tel,c.bizno].some(v=>hHas(v,cq))).map(c=>({c,r:riskOf(c.id)})).filter(x=>!onlyRisk||x.r).sort((a,b)=>onlyRisk?b.r.bal-a.r.bal:a.c.name.localeCompare(b.c.name,'ko')).map(({c,r})=>{const b=curBalance(c.id),q=curBalance(c.id,'buy');tot+=b;totB+=q;return`<tr${r?' class="risk"':''}><td>${r?'⚠ ':''}${esc(c.name)}</td><td>${esc(c.tel)}</td><td class="n"><b${r?' style="color:var(--warn)"':''}>${fmt(b)}</b></td><td class="n">${Math.round(q)?`<b style="color:#b45309">${fmt(q)}</b>`:'0'}</td><td>${lastRecv(c.id)||'<span class="muted">없음</span>'}</td><td>${r?`<span class="rk">${esc(r.why)}</span>`:''}</td><td><div class="acts"><button class="btn sub sm" data-a="l" data-id="${c.id}">원장 · 입금/지급</button><button class="btn sub sm" data-a="e" data-id="${c.id}">수정</button><button class="btn del sm" data-a="d" data-id="${c.id}">삭제</button></div></td></tr>`}).join('')||'<tr><td colspan="7" class="muted">'+(onlyRisk?'위험 거래처가 없어요. 👍':'등록된 거래처가 없어요. 명세서를 쓰면 자동으로 추가돼요.')+'</td></tr>';
   $('#c-foot').innerHTML=`거래처 ${S.clients.length}곳 · 전체 미수 <b>${fmt(tot)}</b>원 · 전체 미지급 <b>${fmt(totB)}</b>원${S.opt.riskOn!==false?` · <span class="rk">⚠ 위험 ${riskList().length}곳</span> <span class="muted">(잔액 ${fmt(S.opt.riskAmt??1000000)}원 이상 또는 ${S.opt.riskDays??30}일 넘게 입금 없음 · 기준은 [설정]에서)</span>`:''}`;if(ledgerCid)renderLedger()}
 function saveClient(){const name=$('#c-name').value.trim();if(!name){alert('상호를 입력해주세요.');return false}
   const dup=S.clients.find(c=>c.name===name&&c.id!==editC);if(dup){alert('같은 이름의 거래처가 이미 있어요.');return false}
@@ -1119,7 +1126,7 @@ $('#is-per').addEventListener('change',renderItemSearch);
 function renderItemSearch(){const q=$('#is-q').value.trim(),out=$('#is-out');if(!q){out.className='muted';out.innerHTML='품목 이름을 치면 그 글자가 들어간 품목과 거래 기록이 나와요.';return}
   out.className='';const per=+$('#is-per').value,from=per?addDays(today(),-per):'',G={},H=[];
   S.invoices.forEach(i=>{if(from&&i.date<from)return;const k=kindOf(i);if(isKind!=='all'&&k!==isKind)return;
-    i.rows.forEach(r=>{if(!r.name||!r.name.includes(q))return;const g=G[r.name]=G[r.name]||{name:r.name,sc:0,sq:0,sa:0,bc:0,bq:0,ba:0,last:'',lsp:null,lbp:null,lspd:'',lbpd:''};
+    i.rows.forEach(r=>{if(!r.name||!hHas(r.name,q))return;const g=G[r.name]=G[r.name]||{name:r.name,sc:0,sq:0,sa:0,bc:0,bq:0,ba:0,last:'',lsp:null,lbp:null,lspd:'',lbpd:''};
       const a=rowAmt(r),qq=num(r.qty);if(k==='sale'){g.sc++;g.sq+=qq;g.sa+=a;if(r.price!==''&&i.date>=g.lspd){g.lsp=num(r.price);g.lspd=i.date}}else{g.bc++;g.bq+=qq;g.ba+=a;if(r.price!==''&&i.date>=g.lbpd){g.lbp=num(r.price);g.lbpd=i.date}}
       if(i.date>g.last)g.last=i.date;if(!isPick||isPick===r.name)H.push({i,r,k,a})})});
   const gs=Object.values(G).sort((a,b)=>b.last<a.last?-1:1);
@@ -1152,7 +1159,7 @@ const subsTxt=it=>(it&&it.subs||[]).filter(s=>s.u&&num(s.per)>0).map(s=>`1${it.u
 function fillUnitSel(sel,withNone=true){const v=sel.value;sel.innerHTML=(withNone?'<option value="">(기본 단위)</option>':'')+UNITS.map(u=>`<option>${u}</option>`).join('');sel.value=v}
 function renderStock(){const M=stockMap(),q=($('#st-q').value||'').trim(),all=$('#st-all').checked;
   $('#st-since').textContent=invStart()?`(재고 계산 시작일: ${invStart()})`:'';
-  const rows=Object.values(M).filter(o=>(all||o.shown)&&(!q||o.name.includes(q))).sort((a,b)=>a.name.localeCompare(b.name,'ko'));let tv=0;
+  const rows=Object.values(M).filter(o=>(all||o.shown)&&(!q||hHas(o.name,q))).sort((a,b)=>a.name.localeCompare(b.name,'ko'));let tv=0;
   $('#st-table').innerHTML=`<thead><tr><th>품목</th><th>규격</th><th class="n">산 것</th><th class="n">판 것</th><th class="n">맞춤</th><th class="n">현재 재고</th><th class="n">평균 매입단가</th><th class="n">재고 금액</th><th>마지막 매입</th></tr></thead><tbody>${rows.map(o=>{const it=itemOf(o.name),v=o.qty>0?o.qty*o.avg:0;tv+=v;
     return`<tr${o.qty<0?' style="background:#fdecec"':''}><td><b>${esc(o.name)}</b>${o.bad?` <span class="tag buy" title="품목에 없는 단위로 판 기록이 있어요. [품목]에서 소분 단위를 정해주세요">단위 확인 ${o.bad}</span>`:''}</td><td>${esc(o.spec)}</td><td class="n">${fq(o.inQ)}</td><td class="n">${fq(o.outQ)}</td><td class="n">${o.adjQ?fq(o.adjQ):''}</td><td class="n"><b style="${o.qty<0?'color:var(--warn)':''}">${fq(Math.round(o.qty*100)/100)} ${esc(o.unit)}</b></td><td class="n">${o.avg?fmt(o.avg):''}</td><td class="n">${v?fmt(v):''}</td><td>${o.last||''}</td></tr>`}).join('')||`<tr><td colspan="9" class="muted">아직 재고가 없어요. [매입 작성]으로 산 물건을 적거나, 아래 [재고 맞추기]에서 기초 재고를 넣으면 여기 나와요.</td></tr>`}</tbody>${rows.length?`<tfoot><tr><td colspan="7">합계 ${rows.length}개 품목</td><td class="n">${fmt(tv)}</td><td></td></tr></tfoot>`:''}`;
   ['#sp-fu','#sp-tu','#aj-unit'].forEach(s=>fillUnitSel($(s)));

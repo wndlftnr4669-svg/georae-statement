@@ -1,12 +1,10 @@
 {
- "version": "2.2",
+ "version": "2.2.1",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "9e5137e523bdffe95e07cc2e8683fca99ff2bb761301dc9f868a5edbcd12fa3d",
- "size": 715477,
+ "sha256": "aa45522fe60d31766839f603db600ca6f7f3a2fc8bfaee1d0a40bb0b6414a871",
+ "size": 716411,
  "notes": [
-  "더 크고 단순하게: 글자·버튼 키움, 메뉴 이름 정리",
-  "명세서 작성의 매입 체크 없앰 ([매입 작성] 메뉴 사용)",
-  "재고 소분 제거, 설정 묶음 정리 · 바꾸면 바로 저장"
+  "거래처 · 품목 초성 검색 (예: ㅂㅇ → 백오이)"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"
