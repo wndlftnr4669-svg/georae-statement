@@ -614,9 +614,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.2.3';
+const APP_VER='2.2.4';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정] → 백업 → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정] → 백업의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.2.4',date:'2026-11-02',title:'단가 공란 · 원장 최근 순',items:['명세서 작성에서 품목을 골라도 단가는 비워둬요. (그날 시세대로 직접 넣기)','거래처 원장(입금 잡는 화면)에서 최근 기록이 맨 위에 나와요. (인쇄는 날짜 순 그대로)']},
  {ver:'2.2.3',date:'2026-11-02',title:'금액 칸 콤마',items:['단가 · 입금액 · 이월 미수 · 매입단가 등 금액을 넣는 칸에 모두 천 단위 콤마가 찍혀요. (미수 위험 기준 포함)']},
  {ver:'2.2.1',date:'2026-11-02',title:'초성 검색',items:['거래처 · 품목을 입력할 때 초성만 쳐도 목록이 떠요. (예: ㅂㅇ → 백오이, ㄷㅈㅁㅌ → 대전마트, 백ㅇ처럼 섞어도 돼요)','거래 내역 · 거래처 · 품목 · 재고 검색칸도 초성으로 찾을 수 있어요.']},
  {ver:'2.2',date:'2026-11-01',title:'더 크고 단순하게',items:['글자와 버튼을 키우고, 메뉴 이름을 짧게 바꿨어요. (매입 작성 · 거래처 · 설정)','명세서 작성의 [매입으로 기록] 체크는 없앴어요. 산 물건은 [매입 작성] 메뉴에서 적으면 돼요.','재고에서 소분은 빼고 [재고 맞추기]만 남겼어요.','설정은 묶음별로 접어두고, 바꾸면 바로 저장되게 했어요. 부가세 칸은 쓰는 분만 켜면 보여요.']},
@@ -733,9 +734,9 @@ function hIdx(name,q){name=String(name||'');if(!q)return 0;const i=name.indexOf(
 const hHas=(name,q)=>hIdx(name,q)>=0;
 function matchSort(arr,key,q){return arr.map(x=>({x,i:hIdx(key(x),q)})).filter(o=>o.i>=0).sort((a,b)=>(a.i===0?0:1)-(b.i===0?0:1)||key(a.x).length-key(b.x).length||key(a.x).localeCompare(key(b.x),'ko')).slice(0,8).map(o=>o.x)}
 function fillItem(tr,it,overwrite){const sp=tr.querySelector('.i-spec'),pr=tr.querySelector('.i-price');tr.querySelector('.i-name').value=it.name;
-  if(overwrite||!sp.value)sp.value=it.spec||'';if(it.unit&&(overwrite||!tr.dataset.unit))setUnit(tr,it.unit);const P=$('#f-buy').checked&&num(it.cost)?it.cost:it.price;if(!pr.value&&num(P))pr.value=fmt(P);recalc()}
+  if(overwrite||!sp.value)sp.value=it.spec||'';if(it.unit&&(overwrite||!tr.dataset.unit))setUnit(tr,it.unit);if($('#f-buy').checked&&!pr.value&&num(it.cost))pr.value=fmt(it.cost);recalc()}
 function itemAC(inp){const q=inp.value.trim();if(!q){acClose();return}
-  const buyM=$('#f-buy').checked,STK=stockMap();acOpen(inp,matchSort(S.items,i=>i.name,q),i=>{const st=STK[i.name],pr=buyM&&num(i.cost)?i.cost:i.price;return`<span>${esc(i.name)}</span><span class="m">${i.spec?esc(i.spec)+' · ':''}${i.unit?`<span class="u">${esc(i.unit)}</span>`:'단위 없음'}${num(pr)?' · '+(buyM?'매입 ':'')+fmt(pr)+'원':''}${st&&st.shown?` · 재고 <b>${fq(Math.round(st.qty*100)/100)}</b>`:''}</span>`},
+  const buyM=$('#f-buy').checked,STK=stockMap();acOpen(inp,matchSort(S.items,i=>i.name,q),i=>{const st=STK[i.name],pr=buyM&&num(i.cost)?i.cost:i.price;return`<span>${esc(i.name)}</span><span class="m">${i.spec?esc(i.spec)+' · ':''}${i.unit?`<span class="u">${esc(i.unit)}</span>`:'단위 없음'}${buyM&&num(pr)?' · 매입 '+fmt(pr)+'원':''}${st&&st.shown?` · 재고 <b>${fq(Math.round(st.qty*100)/100)}</b>`:''}</span>`},
     it=>{const tr=inp.closest('tr');fillItem(tr,it,true);const q2=tr.querySelector('.i-qty');q2.focus();q2.select()})}
 function clientAC(inp){const q=inp.value.trim();if(!q){acClose();return}
   acOpen(inp,matchSort(S.clients,c=>c.name,q),c=>`<span>${esc(c.name)}</span><span class="m">${c.tel?esc(c.tel)+' · ':''}미수 ${fmt(curBalance(c.id))}${Math.round(curBalance(c.id,'buy'))?' · 미지급 '+fmt(curBalance(c.id,'buy')):''}</span>`,
@@ -951,13 +952,13 @@ function ledgerRows(cid,k='sale'){const c=S.clients.find(x=>x.id===cid);let b=op
   entriesFor(cid,k).forEach(e=>{b+=e.amt-e.paid;out.push({date:e.date,kind:e.type==='inv'?(k==='buy'?'매입 ':'명세서 ')+e.ref.no:(k==='buy'?'지급':'입금')+(e.ref.memo?' · '+e.ref.memo:''),amt:e.type==='inv'?e.amt:'',paid:e.paid||'',bal:b,pay:e.type==='pay'?e.ref.id:null})});return out}
 function netLedgerTable(cid,btn){const c=S.clients.find(x=>x.id===cid);let b=netOpen(c);const rows=[{date:'',kind:'이월 잔액',bal:b}];
   netEntries(cid).forEach(e=>{b+=e.sg*(e.amt-e.paid);const sale=e.sg>0,inv=e.type==='inv';rows.push({date:e.date,kind:inv?(sale?'매출 ':'매입 ')+e.ref.no:(sale?'입금':'지급')+(e.ref.memo?' · '+e.ref.memo:''),sa:inv&&sale?e.amt:'',bu:inv&&!sale?e.amt:'',inn:sale&&e.paid?e.paid:'',out:!sale&&e.paid?e.paid:'',bal:b,pay:inv?null:e.ref.id})});
-  const big=rows.length>1500,sh=big?[rows[0],...rows.slice(-1500)]:rows;
+  const big=rows.length>1500,sh0=big?[rows[0],...rows.slice(-1500)]:rows,sh=btn?[...sh0].reverse():sh0,skip=btn?sh.length-1:0;
   return`<div class="tbl-wrap"><table class="t"><thead><tr><th>일자</th><th>내용</th><th class="n">매출</th><th class="n">입금</th><th class="n">매입</th><th class="n">지급</th><th class="n">잔액</th>${btn?'<th></th>':''}</tr></thead><tbody>
-  ${big?`<tr><td colspan="${btn?8:7}" class="muted">기록이 많아서 최근 1,500건만 보여요. (잔액은 전체 기준)</td></tr>`:''}${sh.map((r,k)=>(big&&k===0)?'':`<tr><td>${r.date}</td><td>${esc(r.kind)}</td>${['sa','inn','bu','out'].map(f=>`<td class="n">${r[f]===''||r[f]==null?'':fmt(r[f])}</td>`).join('')}<td class="n"><b>${fmt(r.bal)}</b></td>${btn?`<td>${r.pay?`<button class="btn del sm" data-pay="${r.pay}">삭제</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>`}
+  ${big?`<tr><td colspan="${btn?8:7}" class="muted">기록이 많아서 최근 1,500건만 보여요. (잔액은 전체 기준)</td></tr>`:''}${sh.map((r,k)=>(big&&k===skip)?'':`<tr><td>${r.date}</td><td>${esc(r.kind)}</td>${['sa','inn','bu','out'].map(f=>`<td class="n">${r[f]===''||r[f]==null?'':fmt(r[f])}</td>`).join('')}<td class="n"><b>${fmt(r.bal)}</b></td>${btn?`<td>${r.pay?`<button class="btn del sm" data-pay="${r.pay}">삭제</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>`}
 const balTxt=n=>Math.round(n)>=0?`받을 돈 ${fmt(n)}원`:`줄 돈 ${fmt(-n)}원`;
 const hasBuy=c=>!!num(c.openingBuy)||S.invoices.some(i=>i.clientId===c.id&&kindOf(i)==='buy')||S.payments.some(p=>p.clientId===c.id&&kindOf(p)==='buy');
 function openLedger(cid){ledgerCid=cid;renderLedger();$('#ledger').classList.remove('hide');$('#ledger').scrollIntoView({behavior:'smooth'})}
-function ledgerTable(cid,k,btn){const rows=ledgerRows(cid,k);return`<div class="tbl-wrap"><table class="t"><thead><tr><th>일자</th><th>내용</th><th class="n">${k==='buy'?'매입금액':'거래금액'}</th><th class="n">${k==='buy'?'지급':'입금'}</th><th class="n">${k==='buy'?'미지급':'미수'}</th>${btn?'<th></th>':''}</tr></thead><tbody>
+function ledgerTable(cid,k,btn){const rows0=ledgerRows(cid,k),rows=btn?[...rows0].reverse():rows0;return`<div class="tbl-wrap"><table class="t"><thead><tr><th>일자</th><th>내용</th><th class="n">${k==='buy'?'매입금액':'거래금액'}</th><th class="n">${k==='buy'?'지급':'입금'}</th><th class="n">${k==='buy'?'미지급':'미수'}</th>${btn?'<th></th>':''}</tr></thead><tbody>
   ${rows.map(r=>`<tr><td>${r.date}</td><td>${esc(r.kind)}</td><td class="n">${r.amt===''?'':fmt(r.amt)}</td><td class="n">${r.paid===''?'':fmt(r.paid)}</td><td class="n"><b>${fmt(r.bal)}</b></td>${btn?`<td>${r.pay?`<button class="btn del sm" data-pay="${r.pay}">삭제</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>`}
 function renderLedger(){const c=S.clients.find(x=>x.id===ledgerCid);if(!c){$('#ledger').classList.add('hide');return}const hb=hasBuy(c),pk=$('#lp-kind')?$('#lp-kind').value:'sale',net=NET();
   $('#ledger').innerHTML=`<h2>${esc(c.name)} ${net?`통합 원장 · ${balTxt(netBal(c.id))}`:`원장 · 미수 ${fmt(curBalance(c.id))}원${hb?` · 미지급 ${fmt(curBalance(c.id,'buy'))}원`:''}`}</h2>
