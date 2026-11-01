@@ -1,10 +1,10 @@
 {
- "version": "2.2.1",
+ "version": "2.2.2",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "aa45522fe60d31766839f603db600ca6f7f3a2fc8bfaee1d0a40bb0b6414a871",
- "size": 716411,
+ "sha256": "8405f90157ed09eca22826a3af402ebbd45b000dce077bd4422ca6d67eead484",
+ "size": 717034,
  "notes": [
-  "거래처 · 품목 초성 검색 (예: ㅂㅇ → 백오이)"
+  "미수 위험 기준 잔액에 천 단위 콤마 표시"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"

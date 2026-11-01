@@ -425,7 +425,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 </details>
 <details class="card fold"><summary>⚠️ 미수 위험 기준</summary>
   <div class="row" style="gap:12px"><label class="chk"><input type="checkbox" id="o-risk"> 빨간색으로 표시하기</label></div>
-  <div class="row" style="gap:12px;margin-top:10px"><label class="chk">잔액이 <input id="o-ramt" class="n" data-num="1" autocomplete="off" style="width:120px"> 원 이상이거나</label><label class="chk">마지막 입금 후 <input id="o-rdays" class="n" data-num="1" autocomplete="off" style="width:70px"> 일이 넘으면</label></div>
+  <div class="row" style="gap:12px;margin-top:10px"><label class="chk">잔액이 <input id="o-ramt" class="n" data-num="1" data-comma="1" autocomplete="off" style="width:130px"> 원 이상이거나</label><label class="chk">마지막 입금 후 <input id="o-rdays" class="n" data-num="1" autocomplete="off" style="width:70px"> 일이 넘으면</label></div>
 </details>
 <details class="card fold"><summary>⚙️ 계산 · 입력</summary>
   <div class="row" style="gap:18px">
@@ -578,7 +578,9 @@ $('#pv-print').onclick=()=>{$('#pv').classList.add('hide');printInvs(pvArr)};
 
 /* 숫자 칸: 한/영 상태를 건드리지 않게 일반 글자 칸으로 두고, 숫자 말고는 지움 */
 function cleanNum(el){const v=el.value,c=v.replace(/[^\d.,\-]/g,'');if(c!==v){const p=el.selectionStart-(v.length-c.length);el.value=c;try{el.setSelectionRange(Math.max(0,p),Math.max(0,p))}catch(e){}}}
-document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.num&&!e.isComposing)cleanNum(t)},true);
+function commaFmt(el){const v=el.value,pos=el.selectionStart??v.length,digitsBefore=v.slice(0,pos).replace(/[^\d]/g,'').length,neg=v.trim().startsWith('-'),d=v.replace(/[^\d]/g,'');
+  const f=d?(neg?'-':'')+Number(d).toLocaleString('ko-KR'):(neg?'-':'');if(f===v)return;el.value=f;let c=0,i=0;while(i<f.length&&c<digitsBefore){if(/\d/.test(f[i]))c++;i++}try{el.setSelectionRange(i,i)}catch(e){}}
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.num&&!e.isComposing){cleanNum(t);if(t.dataset.comma)commaFmt(t)}},true);
 document.addEventListener('compositionend',e=>{const t=e.target;if(t.dataset&&t.dataset.num)setTimeout(()=>{cleanNum(t);t.dispatchEvent(new Event('input',{bubbles:true}))},0)},true);
 /* ---------- 한글 입력으로 시작 (윈도우 IME를 한글 모드로) ---------- */
 /* 켤 때 PowerShell 하나를 미리 띄워두고(코드 미리 준비), 필요할 때 한 줄만 보내서 바로 바꿈 */
@@ -611,9 +613,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.2.1';
+const APP_VER='2.2.2';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정] → 백업 → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정] → 백업의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.2.2',date:'2026-11-02',title:'미수 기준 금액 콤마',items:['[설정] → 미수 위험 기준의 잔액 칸에 천 단위 콤마(1,000,000)가 찍혀요.']},
  {ver:'2.2.1',date:'2026-11-02',title:'초성 검색',items:['거래처 · 품목을 입력할 때 초성만 쳐도 목록이 떠요. (예: ㅂㅇ → 백오이, ㄷㅈㅁㅌ → 대전마트, 백ㅇ처럼 섞어도 돼요)','거래 내역 · 거래처 · 품목 · 재고 검색칸도 초성으로 찾을 수 있어요.']},
  {ver:'2.2',date:'2026-11-01',title:'더 크고 단순하게',items:['글자와 버튼을 키우고, 메뉴 이름을 짧게 바꿨어요. (매입 작성 · 거래처 · 설정)','명세서 작성의 [매입으로 기록] 체크는 없앴어요. 산 물건은 [매입 작성] 메뉴에서 적으면 돼요.','재고에서 소분은 빼고 [재고 맞추기]만 남겼어요.','설정은 묶음별로 접어두고, 바꾸면 바로 저장되게 했어요. 부가세 칸은 쓰는 분만 켜면 보여요.']},
  {ver:'2.1.1',date:'2026-10-31',title:'매입 입력 화면 통일',items:['위쪽 메뉴와 첫 화면에 [매입 입력]이 생겼어요. 명세서 작성이랑 똑같은 화면(여러 줄 · 방향키 · 단위 선택)으로 매입을 넣을 수 있어요.','[재고] 창의 [매입 입력 열기]를 눌러도 같은 화면이 열려요.']},
@@ -986,7 +989,7 @@ $('#i-body').onclick=e=>{const b=e.target.closest('button');if(!b)return;const i
 const SF=['name','bizno','ceo','tel','addr','biz','kind','bank'];
 function readPrintOpt(){S.opt.paper=$('#o-paper').value;S.opt.pmargin=$('#o-pmargin').value;S.opt.copies=$('#o-copies').value;S.opt.a5dir=$('#o-a5dir').value;S.opt.offX=num($('#o-offx').value);S.opt.offY=num($('#o-offy').value);S.opt.scale=Math.min(150,Math.max(30,num($('#o-scale').value)||100))}
 function sampleInv(){return{id:'_test',no:'테스트-001',date:today(),clientId:null,clientName:'테스트 거래처',taxMode:S.opt.defTax||'exempt',paid:0,created:Date.now(),rows:[{name:'백다다기오이',spec:'50개',qty:'10',unit:'박스',price:'23000',memo:'테스트'},{name:'애호박',spec:'20개',qty:'5',unit:'박스',price:'18500',memo:''},{name:'가지',spec:'',qty:'8',unit:'Kg',price:'3000',memo:''}]}}
-function renderSettings(){SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-showtax').checked=!!S.opt.showTax;$('#o-risk').checked=S.opt.riskOn!==false;$('#o-ramt').value=S.opt.riskAmt??1000000;$('#o-rdays').value=S.opt.riskDays??30;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
+function renderSettings(){SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-showtax').checked=!!S.opt.showTax;$('#o-risk').checked=S.opt.riskOn!==false;$('#o-ramt').value=fmt(S.opt.riskAmt??1000000);$('#o-rdays').value=S.opt.riskDays??30;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
   $('#bk-info').textContent=(IS_APP?`자료 위치: ${winPath(DATA_DIR)} (매일 자동백업은 backup 폴더) · `:'')+`현재 자료: 명세서 ${S.invoices.length}건 · 거래처 ${S.clients.length}곳 · 품목 ${S.items.length}개 · 입금 ${S.payments.length}건`}
 function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.imeKo=$('#o-ime').checked;S.opt.showTax=$('#o-showtax').checked;S.opt.riskOn=$('#o-risk').checked;S.opt.riskAmt=num($('#o-ramt').value);S.opt.riskDays=num($('#o-rdays').value);if(S.opt.imeKo)imeInit();else imeStop();S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
 $('#s-save').onclick=saveSettings;
