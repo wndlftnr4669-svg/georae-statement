@@ -34,6 +34,9 @@ header .ver{font-size:12px;opacity:.75;font-weight:normal;margin-left:6px}
 .notice-list summary .d{font-size:12px;color:var(--sub);white-space:nowrap}
 .notice-list ul{margin:0 0 10px;padding-left:20px;line-height:1.7;color:#374151}
 .tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:10px;background:#eef0f3;color:var(--sub);white-space:nowrap}
+.urow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);max-width:420px}
+.urow .un{width:28px;color:var(--sub);text-align:center}
+.urow b{flex:1}
 .rk{color:var(--warn);font-weight:bold;font-size:12px}
 tr.risk td{background:#fdecec}
 .stat.warn{background:#fdecec;cursor:pointer}
@@ -338,7 +341,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
   <div class="grid">
     <label>품목명 *<input id="i-name"></label>
     <label>규격<input id="i-spec" placeholder="예: 50개, 10kg"></label>
-    <label>단위<select id="i-unit"><option value="">없음</option><option>박스</option><option>Kg</option><option>g</option><option>개</option><option>단</option><option>망</option></select></label>
+    <label>단위<select id="i-unit"><option value="">없음</option></select></label>
     <label>기본 판매단가<input id="i-price" class="n" autocomplete="off" data-num="1" data-comma="1"></label>
     <label>매입단가<input id="i-cost" class="n" autocomplete="off" data-num="1" data-comma="1"></label>
     <label class="hide">소분 단위 1 (1 기본단위 = 몇?)<span class="row" style="gap:4px;flex-wrap:nowrap"><input id="i-sp1" class="n" autocomplete="off" data-num="1" placeholder="예: 10" style="width:70px"><select id="i-su1"></select></span></label>
@@ -426,6 +429,11 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 <details class="card fold"><summary>⚠️ 미수 위험 기준</summary>
   <div class="row" style="gap:12px"><label class="chk"><input type="checkbox" id="o-risk"> 빨간색으로 표시하기</label></div>
   <div class="row" style="gap:12px;margin-top:10px"><label class="chk">잔액이 <input id="o-ramt" class="n" data-num="1" data-comma="1" autocomplete="off" style="width:130px"> 원 이상이거나</label><label class="chk">마지막 입금 후 <input id="o-rdays" class="n" data-num="1" autocomplete="off" style="width:70px"> 일이 넘으면</label></div>
+</details>
+<details class="card fold"><summary>📏 단위</summary>
+  <p class="muted" style="margin-top:0">수량 다음 Enter를 누르면 나오는 단위 목록이에요. 위에 있을수록 앞 번호(1, 2, 3…)가 돼요.</p>
+  <div id="u-list"></div>
+  <div class="row" style="margin-top:12px"><input id="u-new" placeholder="새 단위 (예: 상자)" style="width:200px" autocomplete="off" maxlength="6"><button class="btn" id="u-add">추가</button><button class="btn sub" id="u-reset">처음대로</button></div>
 </details>
 <details class="card fold"><summary>⚙️ 계산 · 입력</summary>
   <div class="row" style="gap:18px">
@@ -614,9 +622,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.2.4';
+const APP_VER='2.2.5';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정] → 백업 → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정] → 백업의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.2.5',date:'2026-11-02',title:'단위 관리',items:['단위에 봉지 · 관을 추가했어요.','[설정] → 단위에서 단위를 추가 · 삭제하고, ▲▼로 순서를 바꿀 수 있어요. (위에 있을수록 앞 번호)']},
  {ver:'2.2.4',date:'2026-11-02',title:'단가 공란 · 원장 최근 순',items:['명세서 작성에서 품목을 골라도 단가는 비워둬요. (그날 시세대로 직접 넣기)','거래처 원장(입금 잡는 화면)에서 최근 기록이 맨 위에 나와요. (인쇄는 날짜 순 그대로)']},
  {ver:'2.2.3',date:'2026-11-02',title:'금액 칸 콤마',items:['단가 · 입금액 · 이월 미수 · 매입단가 등 금액을 넣는 칸에 모두 천 단위 콤마가 찍혀요. (미수 위험 기준 포함)']},
  {ver:'2.2.1',date:'2026-11-02',title:'초성 검색',items:['거래처 · 품목을 입력할 때 초성만 쳐도 목록이 떠요. (예: ㅂㅇ → 백오이, ㄷㅈㅁㅌ → 대전마트, 백ㅇ처럼 섞어도 돼요)','거래 내역 · 거래처 · 품목 · 재고 검색칸도 초성으로 찾을 수 있어요.']},
@@ -757,13 +766,14 @@ function arrowNav(e){if(!e.key.startsWith('Arrow')||e.shiftKey||e.ctrlKey||e.alt
   else if(e.key==='ArrowLeft'&&(all||b===0)){if(c>0)go=()=>focusCell(tr,c-1);else if(tr.previousElementSibling)go=()=>focusCell(tr.previousElementSibling,COLS.length-1)}
   else if(e.key==='ArrowRight'&&(all||a===len)){if(c<COLS.length-1)go=()=>focusCell(tr,c+1);else{let nx=tr.nextElementSibling;if(!nx&&rowHas(tr))nx=addRow();if(nx)go=()=>focusCell(nx,0)}}
   if(!go)return false;e.preventDefault();closeUnit();acClose();go();return true}
-const UNITS=['박스','Kg','g','개','단','망'];let unitPop=null;
+const DEF_UNITS=['박스','Kg','g','개','단','망','봉지','관'];
+const UNITS_=()=>Array.isArray(S.opt.units)&&S.opt.units.length?S.opt.units:DEF_UNITS;let unitPop=null;
 function setUnit(tr,u){tr.dataset.unit=u||'';const t=tr.querySelector('.u-tag');t.textContent=u||'단위';t.classList.toggle('empty',!u)}
 function closeUnit(){if(unitPop){unitPop.pop.remove();unitPop=null}}
 function openUnit(tr){closeUnit();const inp=tr.querySelector('.i-qty'),rc=inp.getBoundingClientRect(),pop=document.createElement('div');pop.className='unitpop';
-  const opts=[...UNITS,''];let idx=opts.indexOf(tr.dataset.unit||'');if(idx<0||!tr.dataset.unit)idx=0;
-  pop.innerHTML='<div class="hint">숫자키 · ↑↓ · Enter</div>'+opts.map((u,k)=>`<button type="button" data-k="${k}"><small>${u?k+1:0}</small>${u||'없음'}</button>`).join('');
-  document.body.appendChild(pop);pop.style.left=rc.left+'px';pop.style.top=(rc.bottom+3)+'px';
+  const opts=[...UNITS_(),''];let idx=opts.indexOf(tr.dataset.unit||'');if(idx<0||!tr.dataset.unit)idx=0;
+  pop.innerHTML='<div class="hint">숫자키 · ↑↓ · Enter</div>'+opts.map((u,k)=>`<button type="button" data-k="${k}"><small>${u?(k<9?k+1:'·'):0}</small>${u?esc(u):'없음'}</button>`).join('');
+  document.body.appendChild(pop);pop.style.left=rc.left+'px';const ph=pop.offsetHeight;pop.style.top=(rc.bottom+3+ph>window.innerHeight-4?Math.max(4,rc.top-ph-3):rc.bottom+3)+'px';
   pop.addEventListener('mousedown',e=>e.preventDefault());pop.onclick=e=>{const b=e.target.closest('button');if(b)pickUnit(+b.dataset.k)};
   unitPop={pop,tr,idx,opts};hlUnit()}
 function hlUnit(){unitPop.pop.querySelectorAll('button').forEach((b,k)=>b.classList.toggle('on',k===unitPop.idx))}
@@ -810,7 +820,7 @@ $('#rows tbody').addEventListener('keydown',e=>{
     if(e.key==='ArrowUp'){e.preventDefault();unitPop.idx=(unitPop.idx+n-1)%n;hlUnit();return}
     if(e.key==='Enter'){e.preventDefault();pickUnit(unitPop.idx);return}
     if(e.key==='Escape'){e.preventDefault();closeUnit();return}
-    if(/^[0-6]$/.test(e.key)){e.preventDefault();pickUnit(e.key==='0'?n-1:+e.key-1);return}
+    if(/^[0-9]$/.test(e.key)){const d=+e.key;if(d===0||d<=Math.min(9,n-1)){e.preventDefault();pickUnit(d===0?n-1:d-1)}else e.preventDefault();return}
     closeUnit()}
   if(arrowNav(e))return;
   if(e.key==='Enter'&&e.target.classList.contains('i-qty')){e.preventDefault();openUnit(e.target.closest('tr'));return}
@@ -979,22 +989,31 @@ function printLedger(cid){const c=S.clients.find(x=>x.id===cid),hb=hasBuy(c);
 let editI=null;
 const IF=['name','spec','unit','price','cost','sp1','su1','sp2','su2'];
 function clearI(){editI=null;IF.forEach(f=>$('#i-'+f).value='');$('#i-track').checked=false;markClean('items')}
-function renderItems(){['#i-su1','#i-su2'].forEach(s=>{const v=$(s).value;$(s).innerHTML='<option value="">-</option>'+UNITS.map(u=>`<option>${u}</option>`).join('');$(s).value=v});const STK=stockMap();$('#i-body').innerHTML=[...S.items].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(i=>{const st=STK[i.name];return`<tr><td>${esc(i.name)}</td><td>${esc(i.spec)}</td><td>${esc(i.unit||'')}</td><td class="n">${num(i.price)?fmt(i.price):''}</td><td class="n">${num(i.cost)?fmt(i.cost):''}</td><td class="n">${st&&st.shown?fq(Math.round(st.qty*100)/100):''}</td><td><div class="acts"><button class="btn sub sm" data-a="e" data-id="${i.id}">수정</button><button class="btn del sm" data-a="d" data-id="${i.id}">삭제</button></div></td></tr>`}).join('')||'<tr><td colspan="7" class="muted">등록된 품목이 없어요</td></tr>'}
+function fillItemUnit(extra){const sel=$('#i-unit'),v=extra!==undefined?extra:sel.value,L=[...UNITS_()];if(v&&!L.includes(v))L.push(v);sel.innerHTML='<option value="">없음</option>'+L.map(u=>`<option>${esc(u)}</option>`).join('');sel.value=v||''}
+function renderItems(){fillItemUnit();['#i-su1','#i-su2'].forEach(s=>{const v=$(s).value;$(s).innerHTML='<option value="">-</option>'+UNITS_().map(u=>`<option>${esc(u)}</option>`).join('');$(s).value=v});const STK=stockMap();$('#i-body').innerHTML=[...S.items].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(i=>{const st=STK[i.name];return`<tr><td>${esc(i.name)}</td><td>${esc(i.spec)}</td><td>${esc(i.unit||'')}</td><td class="n">${num(i.price)?fmt(i.price):''}</td><td class="n">${num(i.cost)?fmt(i.cost):''}</td><td class="n">${st&&st.shown?fq(Math.round(st.qty*100)/100):''}</td><td><div class="acts"><button class="btn sub sm" data-a="e" data-id="${i.id}">수정</button><button class="btn del sm" data-a="d" data-id="${i.id}">삭제</button></div></td></tr>`}).join('')||'<tr><td colspan="7" class="muted">등록된 품목이 없어요</td></tr>'}
 function saveItem(){const name=$('#i-name').value.trim();if(!name){alert('품목명을 입력해주세요.');return false}let it=editI?S.items.find(x=>x.id===editI):null;if(!it){it={id:uid()};S.items.push(it)}it.name=name;it.spec=$('#i-spec').value.trim();it.unit=$('#i-unit').value;it.price=num($('#i-price').value);it.cost=num($('#i-cost').value);it.subs=[[$('#i-su1').value,$('#i-sp1').value],[$('#i-su2').value,$('#i-sp2').value]].filter(x=>x[0]&&num(x[1])>0).map(x=>({u:x[0],per:num(x[1])}));it.track=$('#i-track').checked;save();refreshLists();clearI();renderItems();toast('품목 저장했어요');return true}
 $('#i-save').onclick=saveItem;
 $('#i-cancel').onclick=clearI;
 $('#i-body').onclick=e=>{const b=e.target.closest('button');if(!b)return;const it=S.items.find(x=>x.id===b.dataset.id);if(!it)return;
-  if(b.dataset.a==='e'){editI=it.id;$('#i-name').value=it.name;$('#i-spec').value=it.spec||'';$('#i-unit').value=it.unit||'';$('#i-price').value=num(it.price)?fmt(it.price):'';$('#i-cost').value=num(it.cost)?fmt(it.cost):'';const sb=it.subs||[];$('#i-su1').value=sb[0]?sb[0].u:'';$('#i-sp1').value=sb[0]?sb[0].per:'';$('#i-su2').value=sb[1]?sb[1].u:'';$('#i-sp2').value=sb[1]?sb[1].per:'';$('#i-track').checked=!!it.track;markClean('items');winTop()}
+  if(b.dataset.a==='e'){editI=it.id;$('#i-name').value=it.name;$('#i-spec').value=it.spec||'';fillItemUnit(it.unit||'');$('#i-price').value=num(it.price)?fmt(it.price):'';$('#i-cost').value=num(it.cost)?fmt(it.cost):'';const sb=it.subs||[];$('#i-su1').value=sb[0]?sb[0].u:'';$('#i-sp1').value=sb[0]?sb[0].per:'';$('#i-su2').value=sb[1]?sb[1].u:'';$('#i-sp2').value=sb[1]?sb[1].per:'';$('#i-track').checked=!!it.track;markClean('items');winTop()}
   if(b.dataset.a==='d'&&confirm(it.name+' 품목을 삭제할까요? (이미 쓴 명세서는 그대로 남아요)')){S.items=S.items.filter(x=>x.id!==it.id);save();refreshLists();renderItems()}};
 
 /* ---------- 설정 · 백업 ---------- */
 const SF=['name','bizno','ceo','tel','addr','biz','kind','bank'];
 function readPrintOpt(){S.opt.paper=$('#o-paper').value;S.opt.pmargin=$('#o-pmargin').value;S.opt.copies=$('#o-copies').value;S.opt.a5dir=$('#o-a5dir').value;S.opt.offX=num($('#o-offx').value);S.opt.offY=num($('#o-offy').value);S.opt.scale=Math.min(150,Math.max(30,num($('#o-scale').value)||100))}
 function sampleInv(){return{id:'_test',no:'테스트-001',date:today(),clientId:null,clientName:'테스트 거래처',taxMode:S.opt.defTax||'exempt',paid:0,created:Date.now(),rows:[{name:'백다다기오이',spec:'50개',qty:'10',unit:'박스',price:'23000',memo:'테스트'},{name:'애호박',spec:'20개',qty:'5',unit:'박스',price:'18500',memo:''},{name:'가지',spec:'',qty:'8',unit:'Kg',price:'3000',memo:''}]}}
-function renderSettings(){SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-showtax').checked=!!S.opt.showTax;$('#o-risk').checked=S.opt.riskOn!==false;$('#o-ramt').value=fmt(S.opt.riskAmt??1000000);$('#o-rdays').value=S.opt.riskDays??30;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
+function renderSettings(){renderUnits();SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-showtax').checked=!!S.opt.showTax;$('#o-risk').checked=S.opt.riskOn!==false;$('#o-ramt').value=fmt(S.opt.riskAmt??1000000);$('#o-rdays').value=S.opt.riskDays??30;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
   $('#bk-info').textContent=(IS_APP?`자료 위치: ${winPath(DATA_DIR)} (매일 자동백업은 backup 폴더) · `:'')+`현재 자료: 명세서 ${S.invoices.length}건 · 거래처 ${S.clients.length}곳 · 품목 ${S.items.length}개 · 입금 ${S.payments.length}건`}
 function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.imeKo=$('#o-ime').checked;S.opt.showTax=$('#o-showtax').checked;S.opt.riskOn=$('#o-risk').checked;S.opt.riskAmt=num($('#o-ramt').value);S.opt.riskDays=num($('#o-rdays').value);if(S.opt.imeKo)imeInit();else imeStop();S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
 $('#s-save').onclick=saveSettings;
+function setUnits(L){S.opt.units=L;save();renderUnits();toast('단위를 저장했어요')}
+function renderUnits(){const L=UNITS_();$('#u-list').innerHTML=L.map((u,k)=>`<div class="urow"><span class="un">${k<9?k+1:'·'}</span><b>${esc(u)}</b><button class="btn sub sm" data-u="up" data-k="${k}" ${k===0?'disabled':''} title="위로">▲</button><button class="btn sub sm" data-u="down" data-k="${k}" ${k===L.length-1?'disabled':''} title="아래로">▼</button><button class="btn del sm" data-u="del" data-k="${k}">삭제</button></div>`).join('')}
+$('#u-list').onclick=e=>{const b=e.target.closest('button[data-u]');if(!b)return;const L=[...UNITS_()],k=+b.dataset.k;
+  if(b.dataset.u==='up'&&k>0)[L[k-1],L[k]]=[L[k],L[k-1]];else if(b.dataset.u==='down'&&k<L.length-1)[L[k+1],L[k]]=[L[k],L[k+1]];
+  else if(b.dataset.u==='del'){if(L.length<=1){alert('단위는 하나 이상 있어야 해요.');return}if(!confirm(`'${L[k]}' 단위를 목록에서 뺄까요?\n(이미 쓴 명세서의 단위는 그대로 남아요)`))return;L.splice(k,1)}else return;setUnits(L)};
+$('#u-add').onclick=()=>{const u=$('#u-new').value.trim();if(!u)return;const L=[...UNITS_()];if(L.includes(u)){alert('이미 있는 단위예요.');return}L.push(u);$('#u-new').value='';setUnits(L)};
+$('#u-new').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#u-add').click()}});
+$('#u-reset').onclick=()=>{if(confirm('단위 목록을 처음대로(박스·Kg·g·개·단·망·봉지·관) 되돌릴까요?'))setUnits([...DEF_UNITS])};
 function applyUIOpts(){const w=$('#f-tax-wrap');if(w)w.classList.toggle('hide',!S.opt.showTax&&S.opt.defTax!=='add10')}
 document.querySelector('section[data-t="settings"]').addEventListener('change',e=>{const id=e.target.id||'';if(/^(s|o)-/.test(id)){saveSettings();applyUIOpts()}});
 $('#o-test').onclick=()=>{readPrintOpt();save();printInvs([sampleInv()])};
@@ -1161,7 +1180,7 @@ function stockMap(){if(STKC)return STKC;const M={},st=invStart();const g=n=>M[n]
   (S.items||[]).forEach(it=>{if(it.track&&!M[it.name])M[it.name]={name:it.name,inQ:0,outQ:0,adjQ:0,qty:0,unit:it.unit||'',spec:it.spec||'',avg:num(it.cost),last:'',bad:0,shown:true}});
   return STKC=M}
 const subsTxt=it=>(it&&it.subs||[]).filter(s=>s.u&&num(s.per)>0).map(s=>`1${it.unit||''}=${fq(s.per)}${s.u}`).join(', ');
-function fillUnitSel(sel,withNone=true){const v=sel.value;sel.innerHTML=(withNone?'<option value="">(기본 단위)</option>':'')+UNITS.map(u=>`<option>${u}</option>`).join('');sel.value=v}
+function fillUnitSel(sel,withNone=true){const v=sel.value;sel.innerHTML=(withNone?'<option value="">(기본 단위)</option>':'')+UNITS_().map(u=>`<option>${esc(u)}</option>`).join('');sel.value=v}
 function renderStock(){const M=stockMap(),q=($('#st-q').value||'').trim(),all=$('#st-all').checked;
   $('#st-since').textContent=invStart()?`(재고 계산 시작일: ${invStart()})`:'';
   const rows=Object.values(M).filter(o=>(all||o.shown)&&(!q||hHas(o.name,q))).sort((a,b)=>a.name.localeCompare(b.name,'ko'));let tv=0;

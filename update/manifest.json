@@ -1,11 +1,11 @@
 {
- "version": "2.2.4",
+ "version": "2.2.5",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "476d9c89657f765c91813141c586bfc972db3c0b0c30a77912838777c14ab7a1",
- "size": 717722,
+ "sha256": "7341da41fd0c9f7882489eeed2fdfa866f69e1bafc16050be74804ae15fd80ba",
+ "size": 720648,
  "notes": [
-  "명세서 작성 단가 자동 입력 안 함 (공란)",
-  "거래처 원장 최근 기록이 맨 위로"
+  "단위에 봉지·관 추가",
+  "설정에서 단위 추가·삭제·순서 바꾸기"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"
