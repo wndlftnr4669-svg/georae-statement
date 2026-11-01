@@ -243,7 +243,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
     <label>거래일자<input type="date" id="f-date"></label>
     <label><span id="f-client-lbl">거래처 (공급받는자)</span><input id="f-client" placeholder="이름 입력하면 목록이 떠요" autocomplete="off"><span id="f-risk" class="rk"></span></label>
     <label id="f-tax-wrap">세금<select id="f-tax"><option value="exempt">면세 (농산물)</option><option value="add10">과세 (부가세 10% 별도)</option></select></label>
-    <label><span id="f-paid-lbl">이번에 받은 돈 (입금액)</span><input id="f-paid" class="n" autocomplete="off" data-num="1" placeholder="0"></label>
+    <label><span id="f-paid-lbl">이번에 받은 돈 (입금액)</span><input id="f-paid" class="n" autocomplete="off" data-num="1" data-comma="1" placeholder="0"></label>
   </div>
   <div class="tbl-wrap" style="margin-top:12px">
     <table class="t" id="rows">
@@ -306,8 +306,8 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
     <label>대표자<input id="c-ceo"></label>
     <label>전화<input id="c-tel"></label>
     <label style="grid-column:span 2">주소<input id="c-addr"></label>
-    <label>이월 미수 (받을 돈)<input id="c-opening" class="n" autocomplete="off" data-num="1" placeholder="0"></label>
-    <label>이월 미지급 (줄 돈)<input id="c-openingBuy" class="n" autocomplete="off" data-num="1" placeholder="0"></label>
+    <label>이월 미수 (받을 돈)<input id="c-opening" class="n" autocomplete="off" data-num="1" data-comma="1" placeholder="0"></label>
+    <label>이월 미지급 (줄 돈)<input id="c-openingBuy" class="n" autocomplete="off" data-num="1" data-comma="1" placeholder="0"></label>
     <label>메모<input id="c-memo"></label>
   </div>
   <div class="row" style="margin-top:10px"><button class="btn" id="c-save">저장</button><button class="btn sub" id="c-cancel">취소</button></div>
@@ -339,8 +339,8 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
     <label>품목명 *<input id="i-name"></label>
     <label>규격<input id="i-spec" placeholder="예: 50개, 10kg"></label>
     <label>단위<select id="i-unit"><option value="">없음</option><option>박스</option><option>Kg</option><option>g</option><option>개</option><option>단</option><option>망</option></select></label>
-    <label>기본 판매단가<input id="i-price" class="n" autocomplete="off" data-num="1"></label>
-    <label>매입단가<input id="i-cost" class="n" autocomplete="off" data-num="1"></label>
+    <label>기본 판매단가<input id="i-price" class="n" autocomplete="off" data-num="1" data-comma="1"></label>
+    <label>매입단가<input id="i-cost" class="n" autocomplete="off" data-num="1" data-comma="1"></label>
     <label class="hide">소분 단위 1 (1 기본단위 = 몇?)<span class="row" style="gap:4px;flex-wrap:nowrap"><input id="i-sp1" class="n" autocomplete="off" data-num="1" placeholder="예: 10" style="width:70px"><select id="i-su1"></select></span></label>
     <label class="hide">소분 단위 2<span class="row" style="gap:4px;flex-wrap:nowrap"><input id="i-sp2" class="n" autocomplete="off" data-num="1" placeholder="예: 50" style="width:70px"><select id="i-su2"></select></span></label>
     <label class="chk hide" style="align-self:end"><input type="checkbox" id="i-track"> 재고 관리</label>
@@ -578,6 +578,7 @@ $('#pv-print').onclick=()=>{$('#pv').classList.add('hide');printInvs(pvArr)};
 
 /* 숫자 칸: 한/영 상태를 건드리지 않게 일반 글자 칸으로 두고, 숫자 말고는 지움 */
 function cleanNum(el){const v=el.value,c=v.replace(/[^\d.,\-]/g,'');if(c!==v){const p=el.selectionStart-(v.length-c.length);el.value=c;try{el.setSelectionRange(Math.max(0,p),Math.max(0,p))}catch(e){}}}
+const moneyTxt=v=>v===''||v==null||isNaN(num(v))?'':fmt(v);
 function commaFmt(el){const v=el.value,pos=el.selectionStart??v.length,digitsBefore=v.slice(0,pos).replace(/[^\d]/g,'').length,neg=v.trim().startsWith('-'),d=v.replace(/[^\d]/g,'');
   const f=d?(neg?'-':'')+Number(d).toLocaleString('ko-KR'):(neg?'-':'');if(f===v)return;el.value=f;let c=0,i=0;while(i<f.length&&c<digitsBefore){if(/\d/.test(f[i]))c++;i++}try{el.setSelectionRange(i,i)}catch(e){}}
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.num&&!e.isComposing){cleanNum(t);if(t.dataset.comma)commaFmt(t)}},true);
@@ -613,10 +614,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.2.2';
+const APP_VER='2.2.3';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정] → 백업 → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정] → 백업의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
- {ver:'2.2.2',date:'2026-11-02',title:'미수 기준 금액 콤마',items:['[설정] → 미수 위험 기준의 잔액 칸에 천 단위 콤마(1,000,000)가 찍혀요.']},
+ {ver:'2.2.3',date:'2026-11-02',title:'금액 칸 콤마',items:['단가 · 입금액 · 이월 미수 · 매입단가 등 금액을 넣는 칸에 모두 천 단위 콤마가 찍혀요. (미수 위험 기준 포함)']},
  {ver:'2.2.1',date:'2026-11-02',title:'초성 검색',items:['거래처 · 품목을 입력할 때 초성만 쳐도 목록이 떠요. (예: ㅂㅇ → 백오이, ㄷㅈㅁㅌ → 대전마트, 백ㅇ처럼 섞어도 돼요)','거래 내역 · 거래처 · 품목 · 재고 검색칸도 초성으로 찾을 수 있어요.']},
  {ver:'2.2',date:'2026-11-01',title:'더 크고 단순하게',items:['글자와 버튼을 키우고, 메뉴 이름을 짧게 바꿨어요. (매입 작성 · 거래처 · 설정)','명세서 작성의 [매입으로 기록] 체크는 없앴어요. 산 물건은 [매입 작성] 메뉴에서 적으면 돼요.','재고에서 소분은 빼고 [재고 맞추기]만 남겼어요.','설정은 묶음별로 접어두고, 바꾸면 바로 저장되게 했어요. 부가세 칸은 쓰는 분만 켜면 보여요.']},
  {ver:'2.1.1',date:'2026-10-31',title:'매입 입력 화면 통일',items:['위쪽 메뉴와 첫 화면에 [매입 입력]이 생겼어요. 명세서 작성이랑 똑같은 화면(여러 줄 · 방향키 · 단위 선택)으로 매입을 넣을 수 있어요.','[재고] 창의 [매입 입력 열기]를 눌러도 같은 화면이 열려요.']},
@@ -702,7 +703,7 @@ function refreshLists(){$('#dl-clients').innerHTML=S.clients.map(c=>`<option val
 /* ---------- 작성 ---------- */
 let editing=null;
 function addRow(r={}){const tr=document.createElement('tr');
-  tr.innerHTML=`<td><input class="i-name" value="${esc(r.name)}" autocomplete="off"></td><td><input class="i-spec" value="${esc(r.spec)}"></td><td><div class="qtyw"><input class="i-qty n" autocomplete="off" data-num="1" value="${esc(r.qty??'')}"><button class="u-tag" type="button" tabindex="-1">단위</button></div></td><td><input class="i-price n" autocomplete="off" data-num="1" value="${esc(r.price??'')}"></td><td class="n i-amt">0</td><td><input class="i-memo" value="${esc(r.memo)}"></td><td><button class="btn del sm" tabindex="-1" title="줄 삭제">✕</button></td>`;
+  tr.innerHTML=`<td><input class="i-name" value="${esc(r.name)}" autocomplete="off"></td><td><input class="i-spec" value="${esc(r.spec)}"></td><td><div class="qtyw"><input class="i-qty n" autocomplete="off" data-num="1" value="${esc(r.qty??'')}"><button class="u-tag" type="button" tabindex="-1">단위</button></div></td><td><input class="i-price n" autocomplete="off" data-num="1" data-comma="1" value="${moneyTxt(r.price)}"></td><td class="n i-amt">0</td><td><input class="i-memo" value="${esc(r.memo)}"></td><td><button class="btn del sm" tabindex="-1" title="줄 삭제">✕</button></td>`;
   setUnit(tr,r.unit||'');if(r.amt!==undefined&&r.amt!==null&&r.amt!=='')tr.dataset.amt=r.amt;
   tr.querySelector('.u-tag').onclick=()=>{tr.querySelector('.i-qty').focus();openUnit(tr)};
   tr.querySelector('.i-name').addEventListener('change',e=>{const it=S.items.find(i=>i.name===e.target.value.trim());if(it)fillItem(tr,it,false)});
@@ -732,7 +733,7 @@ function hIdx(name,q){name=String(name||'');if(!q)return 0;const i=name.indexOf(
 const hHas=(name,q)=>hIdx(name,q)>=0;
 function matchSort(arr,key,q){return arr.map(x=>({x,i:hIdx(key(x),q)})).filter(o=>o.i>=0).sort((a,b)=>(a.i===0?0:1)-(b.i===0?0:1)||key(a.x).length-key(b.x).length||key(a.x).localeCompare(key(b.x),'ko')).slice(0,8).map(o=>o.x)}
 function fillItem(tr,it,overwrite){const sp=tr.querySelector('.i-spec'),pr=tr.querySelector('.i-price');tr.querySelector('.i-name').value=it.name;
-  if(overwrite||!sp.value)sp.value=it.spec||'';if(it.unit&&(overwrite||!tr.dataset.unit))setUnit(tr,it.unit);const P=$('#f-buy').checked&&num(it.cost)?it.cost:it.price;if(!pr.value&&num(P))pr.value=P;recalc()}
+  if(overwrite||!sp.value)sp.value=it.spec||'';if(it.unit&&(overwrite||!tr.dataset.unit))setUnit(tr,it.unit);const P=$('#f-buy').checked&&num(it.cost)?it.cost:it.price;if(!pr.value&&num(P))pr.value=fmt(P);recalc()}
 function itemAC(inp){const q=inp.value.trim();if(!q){acClose();return}
   const buyM=$('#f-buy').checked,STK=stockMap();acOpen(inp,matchSort(S.items,i=>i.name,q),i=>{const st=STK[i.name],pr=buyM&&num(i.cost)?i.cost:i.price;return`<span>${esc(i.name)}</span><span class="m">${i.spec?esc(i.spec)+' · ':''}${i.unit?`<span class="u">${esc(i.unit)}</span>`:'단위 없음'}${num(pr)?' · '+(buyM?'매입 ':'')+fmt(pr)+'원':''}${st&&st.shown?` · 재고 <b>${fq(Math.round(st.qty*100)/100)}</b>`:''}</span>`},
     it=>{const tr=inp.closest('tr');fillItem(tr,it,true);const q2=tr.querySelector('.i-qty');q2.focus();q2.select()})}
@@ -767,7 +768,7 @@ function openUnit(tr){closeUnit();const inp=tr.querySelector('.i-qty'),rc=inp.ge
 function hlUnit(){unitPop.pop.querySelectorAll('button').forEach((b,k)=>b.classList.toggle('on',k===unitPop.idx))}
 function pickUnit(k){const{tr,opts}=unitPop;setUnit(tr,opts[k]);closeUnit();tr.querySelector('.i-price').focus();tr.querySelector('.i-price').select();recalc()}
 document.addEventListener('mousedown',e=>{if(unitPop&&!unitPop.pop.contains(e.target)&&!e.target.closest('.u-tag'))closeUnit()});
-function readRows(){return[...$('#rows tbody').children].map(tr=>({name:tr.querySelector('.i-name').value.trim(),spec:tr.querySelector('.i-spec').value.trim(),qty:tr.querySelector('.i-qty').value,price:tr.querySelector('.i-price').value,unit:tr.dataset.unit||'',amt:trAmt(tr),memo:tr.querySelector('.i-memo').value.trim()})).filter(r=>r.name||num(r.qty)||num(r.price)||r.amt)}
+function readRows(){return[...$('#rows tbody').children].map(tr=>({name:tr.querySelector('.i-name').value.trim(),spec:tr.querySelector('.i-spec').value.trim(),qty:tr.querySelector('.i-qty').value,price:tr.querySelector('.i-price').value.replace(/,/g,''),unit:tr.dataset.unit||'',amt:trAmt(tr),memo:tr.querySelector('.i-memo').value.trim()})).filter(r=>r.name||num(r.qty)||num(r.price)||r.amt)}
 function trAmt(tr){return tr.dataset.amt!==undefined?num(tr.dataset.amt):calcAmt(tr.querySelector('.i-qty').value,tr.querySelector('.i-price').value)}
 function formInv(){const name=$('#f-client').value.trim(),cl=S.clients.find(c=>c.name===name),old=editing&&S.invoices.find(i=>i.id===editing);
   return{id:editing||'_new',no:old?old.no:'(저장 시 번호 부여)',date:$('#f-date').value||today(),clientId:cl?cl.id:null,clientName:name,kind:$('#f-buy').checked?'buy':'sale',taxMode:$('#f-tax').value,paid:num($('#f-paid').value),rows:readRows(),created:old?old.created:Date.now()}}
@@ -781,7 +782,7 @@ function setBuyUI(){const b=$('#f-buy').checked,card=$('#f-buy').closest('.card'
   if(curTab==='write')document.querySelectorAll('nav button').forEach(x=>{if(x.dataset.t==='write')x.classList.toggle('on',!b);if(x.dataset.t==='buy')x.classList.toggle('on',b)});recalc()}
 $('#f-buy').addEventListener('change',setBuyUI);
 function newForm(keepKind){editing=null;if(!keepKind)$('#f-buy').checked=false;$('#f-date').value=today();$('#f-client').value='';$('#f-tax').value=S.opt.defTax||'exempt';$('#f-paid').value='';$('#rows tbody').innerHTML='';for(let i=0;i<4;i++)addRow();setBuyUI();markClean('write')}
-function loadForm(inv){editing=inv.id;$('#f-buy').checked=kindOf(inv)==='buy';$('#f-date').value=inv.date;$('#f-client').value=clientOf(inv).name;$('#f-tax').value=inv.taxMode;$('#f-paid').value=inv.paid||'';$('#rows tbody').innerHTML='';inv.rows.forEach(r=>addRow(r));addRow();tab('write');setBuyUI();markClean('write')}
+function loadForm(inv){editing=inv.id;$('#f-buy').checked=kindOf(inv)==='buy';$('#f-date').value=inv.date;$('#f-client').value=clientOf(inv).name;$('#f-tax').value=inv.taxMode;$('#f-paid').value=inv.paid?fmt(inv.paid):'';$('#rows tbody').innerHTML='';inv.rows.forEach(r=>addRow(r));addRow();tab('write');setBuyUI();markClean('write')}
 function saveInv(andPrint){const inv=formInv();
   if(!inv.clientName){alert(inv.kind==='buy'?'매입처를 입력해주세요.':'거래처를 입력해주세요.');$('#f-client').focus();return false}
   if(!inv.rows.length){alert('품목을 한 줄 이상 입력해주세요.\n(돈만 받은 경우는 [거래처] 창에서 입금 등록을 해주세요)');return false}
@@ -941,7 +942,7 @@ $('#c-cancel').onclick=clearC;
 $('#c-search').addEventListener('input',renderClients);$('#c-risk').addEventListener('change',renderClients);
 $('#c-body').onclick=e=>{const b=e.target.closest('button');if(!b)return;const c=S.clients.find(x=>x.id===b.dataset.id);if(!c)return;
   if(b.dataset.a==='l')openLedger(c.id);
-  if(b.dataset.a==='e'){editC=c.id;CF.forEach(f=>$('#c-'+f).value=c[f]??'');$('#c-title').textContent='거래처 수정 · '+c.name;markClean('clients');winTop()}
+  if(b.dataset.a==='e'){editC=c.id;CF.forEach(f=>$('#c-'+f).value=/^opening/.test(f)?(num(c[f])?fmt(c[f]):''):(c[f]??''));$('#c-title').textContent='거래처 수정 · '+c.name;markClean('clients');winTop()}
   if(b.dataset.a==='d'){const n=S.invoices.filter(i=>i.clientId===c.id).length;if(!confirm(n?`${c.name}의 명세서·매입 ${n}건과 입금·지급 기록도 같이 삭제돼요. 정말 삭제할까요?`:`${c.name}을(를) 삭제할까요?`))return;
     S.invoices=S.invoices.filter(i=>i.clientId!==c.id);S.payments=S.payments.filter(p=>p.clientId!==c.id);S.clients=S.clients.filter(x=>x.id!==c.id);if(ledgerCid===c.id){ledgerCid=null;$('#ledger').classList.add('hide')}save();refreshLists();renderClients()}};
 
@@ -960,7 +961,7 @@ function ledgerTable(cid,k,btn){const rows=ledgerRows(cid,k);return`<div class="
   ${rows.map(r=>`<tr><td>${r.date}</td><td>${esc(r.kind)}</td><td class="n">${r.amt===''?'':fmt(r.amt)}</td><td class="n">${r.paid===''?'':fmt(r.paid)}</td><td class="n"><b>${fmt(r.bal)}</b></td>${btn?`<td>${r.pay?`<button class="btn del sm" data-pay="${r.pay}">삭제</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>`}
 function renderLedger(){const c=S.clients.find(x=>x.id===ledgerCid);if(!c){$('#ledger').classList.add('hide');return}const hb=hasBuy(c),pk=$('#lp-kind')?$('#lp-kind').value:'sale',net=NET();
   $('#ledger').innerHTML=`<h2>${esc(c.name)} ${net?`통합 원장 · ${balTxt(netBal(c.id))}`:`원장 · 미수 ${fmt(curBalance(c.id))}원${hb?` · 미지급 ${fmt(curBalance(c.id,'buy'))}원`:''}`}</h2>
-  <div class="row" style="margin-bottom:12px"><select id="lp-kind" style="width:auto"><option value="sale">받은 돈 (입금)</option><option value="buy">준 돈 (지급)</option></select><input type="date" id="lp-date" value="${today()}" style="width:auto"><input id="lp-amt" class="n" autocomplete="off" data-num="1" placeholder="금액" style="width:140px"><input id="lp-memo" placeholder="메모 (현금, 계좌 등)" style="width:180px"><button class="btn" id="lp-add">등록</button><button class="btn sub" id="lp-print">원장 인쇄</button></div>
+  <div class="row" style="margin-bottom:12px"><select id="lp-kind" style="width:auto"><option value="sale">받은 돈 (입금)</option><option value="buy">준 돈 (지급)</option></select><input type="date" id="lp-date" value="${today()}" style="width:auto"><input id="lp-amt" class="n" autocomplete="off" data-num="1" data-comma="1" placeholder="금액" style="width:140px"><input id="lp-memo" placeholder="메모 (현금, 계좌 등)" style="width:180px"><button class="btn" id="lp-add">등록</button><button class="btn sub" id="lp-print">원장 인쇄</button></div>
   ${net?`<p class="muted" style="margin:0 0 6px">매출·매입을 합쳐서 계산해요 (잔액이 +면 받을 돈, −면 줄 돈)</p>${netLedgerTable(c.id,1)}`:`<h3 style="font-size:14px;margin:6px 0">${kTag('sale')} 매출 원장 (받을 돈)</h3>${ledgerTable(c.id,'sale',1)}
   ${hb?`<h3 style="font-size:14px;margin:16px 0 6px">${kTag('buy')} 매입 원장 (줄 돈)</h3>${ledgerTable(c.id,'buy',1)}`:''}`}`;
   $('#lp-kind').value=pk;
@@ -982,7 +983,7 @@ function saveItem(){const name=$('#i-name').value.trim();if(!name){alert('품목
 $('#i-save').onclick=saveItem;
 $('#i-cancel').onclick=clearI;
 $('#i-body').onclick=e=>{const b=e.target.closest('button');if(!b)return;const it=S.items.find(x=>x.id===b.dataset.id);if(!it)return;
-  if(b.dataset.a==='e'){editI=it.id;$('#i-name').value=it.name;$('#i-spec').value=it.spec||'';$('#i-unit').value=it.unit||'';$('#i-price').value=num(it.price)||'';$('#i-cost').value=num(it.cost)||'';const sb=it.subs||[];$('#i-su1').value=sb[0]?sb[0].u:'';$('#i-sp1').value=sb[0]?sb[0].per:'';$('#i-su2').value=sb[1]?sb[1].u:'';$('#i-sp2').value=sb[1]?sb[1].per:'';$('#i-track').checked=!!it.track;markClean('items');winTop()}
+  if(b.dataset.a==='e'){editI=it.id;$('#i-name').value=it.name;$('#i-spec').value=it.spec||'';$('#i-unit').value=it.unit||'';$('#i-price').value=num(it.price)?fmt(it.price):'';$('#i-cost').value=num(it.cost)?fmt(it.cost):'';const sb=it.subs||[];$('#i-su1').value=sb[0]?sb[0].u:'';$('#i-sp1').value=sb[0]?sb[0].per:'';$('#i-su2').value=sb[1]?sb[1].u:'';$('#i-sp2').value=sb[1]?sb[1].per:'';$('#i-track').checked=!!it.track;markClean('items');winTop()}
   if(b.dataset.a==='d'&&confirm(it.name+' 품목을 삭제할까요? (이미 쓴 명세서는 그대로 남아요)')){S.items=S.items.filter(x=>x.id!==it.id);save();refreshLists();renderItems()}};
 
 /* ---------- 설정 · 백업 ---------- */

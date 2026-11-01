@@ -1,10 +1,10 @@
 {
- "version": "2.2.2",
+ "version": "2.2.3",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "8405f90157ed09eca22826a3af402ebbd45b000dce077bd4422ca6d67eead484",
- "size": 717034,
+ "sha256": "b6ea84147350916924c097fcead515351d8315b3518af68b4211be7cb77b3a3a",
+ "size": 717352,
  "notes": [
-  "미수 위험 기준 잔액에 천 단위 콤마 표시"
+  "금액 칸 전부 천 단위 콤마 표시"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"
