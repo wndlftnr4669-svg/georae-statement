@@ -1,11 +1,12 @@
 {
- "version": "2.2.5",
+ "version": "2.2.6",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "7341da41fd0c9f7882489eeed2fdfa866f69e1bafc16050be74804ae15fd80ba",
- "size": 720648,
+ "sha256": "8b2fba9780bdb08c0eec4d0d88f44134e98706db600e4e610d37d46bb6846120",
+ "size": 724369,
  "notes": [
-  "단위에 봉지·관 추가",
-  "설정에서 단위 추가·삭제·순서 바꾸기"
+  "인쇄 1cm씩 크게, 글씨 크고 굵게",
+  "품목/재고 전체 삭제 버튼",
+  "장부 입금 시 금액 칸에 바로 커서"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"
