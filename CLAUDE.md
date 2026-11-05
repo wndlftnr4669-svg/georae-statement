@@ -1,4 +1,4 @@
-# 간편 거래명세서 — 작업 메모
+# 오늘전표 (옛 이름 간편 거래명세서) — 작업 메모
 
 - 사용자: 대전 오정동 농수산물시장 쪽 중도매인용 프로그램. 거래돌이 대체. 반말·부드러운 톤.
 - 앱: Neutralinojs 6.4.0 (윈도우 exe). 모든 UI/로직은 `app/resources/index.html` 단일 파일 (vanilla JS).
@@ -15,3 +15,6 @@
 - 테스트: playwright로 `app/resources/index.html`을 file:// 로 열어 확인 가능 (IS_APP=false, localStorage 사용). 실제 앱 동작은
   `app/bin/neutralino-linux_x64 --mode=browser --port=8123` (resources.neu 같은 폴더) 로 띄워서 확인.
 - 주의: 인쇄는 #print 영역만 보이게 @media print로 숨김 처리. 오버레이(#win-dim, section.win, .modal 등)를 새로 만들면 print 숨김 목록에 꼭 추가.
+- 이름: 2026-11-06 v2.3.0부터 "오늘전표". 아이콘 원본 app/resources/icons/(appIcon.png, app.ico). exe 아이콘은 못 바꾸니(exe 무수정 원칙)
+  앱이 처음 켜질 때 바탕화면에 app.ico를 입힌 "오늘전표.lnk" 바로가기를 만듦(makeShortcut, DATA_DIR/shortcut_v1.txt로 1회).
+  자료 폴더(GeoraeStatement), 백업 파일명(거래명세서_날짜.json)·기본 백업폴더(문서/거래명세서 백업)는 기존 사용자 때문에 그대로 둠.

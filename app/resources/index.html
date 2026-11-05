@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>간편 거래명세서</title>
+<title>오늘전표</title>
+<link rel="icon" href="icons/appIcon.png">
 <style>
 :root{--bg:#f4f5f7;--card:#fff;--ink:#1d2330;--sub:#6b7280;--line:#d9dde3;--pri:#1f6f4a;--warn:#b42318}
 *{box-sizing:border-box}
@@ -207,7 +208,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 </head>
 <body>
 <header>
-  <h1 onclick="goTab('home')" title="첫 화면">간편 거래명세서<span class="ver" id="app-ver"></span></h1>
+  <h1 onclick="goTab('home')" title="첫 화면"><img src="icons/appIcon.png" alt="" style="width:30px;height:30px;vertical-align:-7px;margin-right:7px;border-radius:8px;box-shadow:0 0 0 2px rgba(255,255,255,.7)">오늘전표<span class="ver" id="app-ver"></span></h1>
   <nav>
     <button data-t="write" class="on">명세서 작성</button>
     <button data-t="buy">매입 작성</button>
@@ -669,9 +670,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.2.7';
+const APP_VER='2.3.0';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정] → 백업 → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정] → 백업의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.3.0',date:'2026-11-06',title:'이름이 "오늘전표"로 바뀌었어요',items:['프로그램 이름을 "오늘전표"로 바꾸고 새 아이콘을 달았어요.','바탕화면에 새 아이콘의 "오늘전표" 바로가기가 생겨요. 예전 바로가기가 있으면 그걸 바꿔줘요.','자료 · 백업 · 사용법은 전부 그대로예요.']},
  {ver:'2.2.7',date:'2026-11-06',title:'백업 버튼',items:['메뉴 맨 오른쪽에 노란 [💾 백업] 버튼이 생겼어요.','프로그램을 쓰는 날마다 [문서] → [거래명세서 백업] 폴더에 자동으로 백업돼요. (최근 30일치, 폴더는 바꿀 수 있어요)','[USB · 외장하드에 백업]을 누르면 꽂혀 있는 USB · 외장하드를 찾아서 버튼으로 보여줘요. 누르기만 하면 저장돼요.','USB 백업을 일주일 넘게 안 하면 백업 버튼에 빨간 점이 떠요.','[백업 파일 골라서 되살리기]로 백업한 때로 되돌릴 수 있어요.']},
  {ver:'2.2.6',date:'2026-11-05',title:'글씨 크게 · 전체 삭제',items:['거래명세서 인쇄가 위아래 양옆으로 약 1cm씩 더 크게 나와요.','인쇄 글씨를 전부 키우고 굵게 했어요. 숫자가 길면 칸에 맞게 알아서 조금 줄어요.','혹시 가장자리가 잘리면 [설정] → 여백을 "넓게 11mm"로 바꿔주세요.','[품목]에 "품목 전체 삭제", [재고]에 "재고 전체 삭제" 버튼을 만들었어요. (명세서 · 매입 기록은 그대로 남아요)','거래처 장부에서 입금 잡을 때 커서가 바로 금액 칸에 가 있어요.']},
  {ver:'2.2.5',date:'2026-11-02',title:'단위 관리',items:['단위에 봉지 · 관을 추가했어요.','[설정] → 단위에서 단위를 추가 · 삭제하고, ▲▼로 순서를 바꿀 수 있어요. (위에 있을수록 앞 번호)']},
@@ -1080,6 +1082,17 @@ $('#bk-up').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new File
 $('#bk-restore').onclick=async()=>{if(!IS_APP){$('#bk-up').click();return}
   try{const r=await Neutralino.os.showOpenDialog('되살릴 백업 파일 고르기',{defaultPath:winPath(bkDir())+'\\',filters:[{name:'백업 파일',extensions:['json']},{name:'모든 파일',extensions:['*']}]});if(!r||!r.length)return;restoreText(await Neutralino.filesystem.readFile(r[0]))}catch(e){alert('백업 파일을 읽지 못했어요.\n('+(e.message||e.code||e)+')')}};
 
+/* ---------- 바탕화면 바로가기 (오늘전표 아이콘). exe는 그대로 두고 바로가기에만 아이콘을 입힘 ---------- */
+async function makeShortcut(){if(!IS_APP||typeof NL_OS==='undefined'||NL_OS!=='Windows'||typeof NL_PID==='undefined')return;const flag=DATA_DIR+'/shortcut_v1.txt';
+  try{await Neutralino.filesystem.readFile(flag);return}catch(e){}
+  try{const buf=await (await fetch('icons/app.ico')).arrayBuffer();const ico=DATA_DIR+'/app.ico';await Neutralino.filesystem.writeBinaryFile(ico,buf);
+    const ps=`$d=[Environment]::GetFolderPath('Desktop');$exe=(Get-Process -Id ${NL_PID}).Path;$ico='${winPath(ico).replace(/'/g,"''")}';$w=New-Object -ComObject WScript.Shell;
+$new=Join-Path $d '오늘전표.lnk';$old=@(Get-ChildItem -LiteralPath $d -Filter *.lnk -ErrorAction SilentlyContinue|?{try{$w.CreateShortcut($_.FullName).TargetPath -eq $exe}catch{$false}});
+if($old.Count -gt 0 -and -not (Test-Path -LiteralPath $new)){Move-Item -LiteralPath $old[0].FullName -Destination $new}
+foreach($o in $old|Select-Object -Skip 1){$l=$w.CreateShortcut($o.FullName);$l.IconLocation="$ico,0";$l.Save()}
+$s=$w.CreateShortcut($new);$s.TargetPath=$exe;$s.WorkingDirectory=Split-Path $exe;$s.IconLocation="$ico,0";$s.Description='오늘전표';$s.Save();'ok'`;
+    const r=await psRun(ps);if(String(r.stdOut||'').includes('ok'))await Neutralino.filesystem.writeFile(flag,new Date().toISOString())}catch(e){}}
+
 /* ---------- 백업 창: 컴퓨터 폴더 + USB · 외장하드 ---------- */
 const bkDir=()=>S.opt.bkDir||(DOCS_DIR?DOCS_DIR+'/거래명세서 백업':DATA_DIR+'/backup');
 const pad2=n=>String(n).padStart(2,'0');
@@ -1313,7 +1326,7 @@ $('#st-xlsx').onclick=()=>{const M=stockMap(),rows=Object.values(M).filter(o=>$(
   inp.addEventListener('keydown',e=>acKey(e))});
 
 /* ---------- 시작 ---------- */
-(async function(){if(IS_APP){await appInit();{const t=S.opt.bkLast;if(!t||new Date(t).toDateString()!==new Date().toDateString())autoPcBackup(JSON.stringify(S)).then(()=>save())}$('#bk-open').classList.remove('hide');setTimeout(bkDue,500);$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
+(async function(){if(IS_APP){await appInit();setTimeout(makeShortcut,3000);{const t=S.opt.bkLast;if(!t||new Date(t).toDateString()!==new Date().toDateString())autoPcBackup(JSON.stringify(S)).then(()=>save())}$('#bk-open').classList.remove('hide');setTimeout(bkDue,500);$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
   const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-from').value=t.slice(0,8)+'01';$('#l-to').value=t;fillYears();refreshLists();newForm();setMode('month');renderSettings();markClean('clients');markClean('items');applyUIOpts();if(!S.opt.invStart){S.opt.invStart=today();save()}$('#app-ver').textContent='v'+APP_VER;$('#upd-ver').textContent='v'+APP_VER;tab('home');if(IS_APP){imeInit().then(()=>setTimeout(imeHangul,1200));showWhatsNew();setTimeout(()=>checkUpdate(false),3000)}})();
 </script>
 </body>

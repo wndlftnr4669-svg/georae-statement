@@ -15,19 +15,19 @@ root,ver,*notes=sys.argv[1:]
 b=open(os.path.join(root,'update/resources.neu'),'rb').read()
 m={"version":ver,"url":"https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
    "sha256":hashlib.sha256(b).hexdigest(),"size":len(b),"notes":notes,"minExe":"6.4.0",
-   "download":"https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"}
+   "download":"https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/오늘전표.zip"}
 json.dump(m,open(os.path.join(root,'update/manifest.json'),'w',encoding='utf-8'),ensure_ascii=False,indent=1)
 print('manifest',ver,len(b))
 PY
 # 새로 까는 사람용 zip (exe는 손대지 않은 공식 Neutralino 파일 그대로 — 백신 오진 줄이려고)
-TMP=$(mktemp -d); mkdir "$TMP/간편거래명세서"
-cp bin/neutralino-win_x64.exe "$TMP/간편거래명세서/간편거래명세서.exe"
-cp "$ROOT/update/resources.neu" "$TMP/간편거래명세서/resources.neu"
-cp "$ROOT/tools/사용법.txt" "$TMP/간편거래명세서/사용법.txt"
+TMP=$(mktemp -d); mkdir "$TMP/오늘전표"
+cp bin/neutralino-win_x64.exe "$TMP/오늘전표/오늘전표.exe"
+cp "$ROOT/update/resources.neu" "$TMP/오늘전표/resources.neu"
+cp "$ROOT/tools/사용법.txt" "$TMP/오늘전표/사용법.txt"
 (cd "$TMP" && python3 -c "
 import zipfile,os
 z=zipfile.ZipFile('pkg.zip','w',zipfile.ZIP_DEFLATED)
-for f in sorted(os.listdir('간편거래명세서')):z.write('간편거래명세서/'+f)
+for f in sorted(os.listdir('오늘전표')):z.write('오늘전표/'+f)
 z.close()")
-cp "$TMP/pkg.zip" "$ROOT/download/간편거래명세서.zip"; rm -rf "$TMP"
+cp "$TMP/pkg.zip" "$ROOT/download/오늘전표.zip"; rm -rf "$TMP"
 echo "done: commit & push update/ and download/"

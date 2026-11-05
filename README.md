@@ -1,11 +1,11 @@
-# 간편 거래명세서
+# 오늘전표 (옛 이름: 간편 거래명세서)
 
 농산물 중도매인용 거래명세서 프로그램 (거래돌이 대체). 윈도우 10/11.
 
 ## 내려받기
-**[간편거래명세서.zip 내려받기](https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip)**
+**[오늘전표.zip 내려받기](https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/오늘전표.zip)**
 
-압축을 풀고 `간편거래명세서.exe`를 실행하세요. `resources.neu`와 같은 폴더에 있어야 해요.
+압축을 풀고 `오늘전표.exe`를 실행하세요. `resources.neu`와 같은 폴더에 있어야 해요.
 한 번 깔면 그다음부터는 켤 때 자동으로 업데이트돼요. 자세한 건 압축 안의 `사용법.txt`를 보세요.
 
 ## 주요 기능

@@ -1,12 +1,12 @@
 {
- "version": "2.2.7",
+ "version": "2.3.0",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "5e5f44a83771d82ee2cfbeb73ba17d4774289407a3c8303e4994f8cf4f9b2581",
- "size": 736110,
+ "sha256": "c4b244b3a0793312bb95e708167fab68b779854f93bc8f91b5b9f7235aa1de3c",
+ "size": 774621,
  "notes": [
-  "메뉴에 [💾 백업] 버튼",
-  "문서 폴더 자동 백업, USB·외장하드 백업, 되살리기"
+  "이름을 오늘전표로 바꾸고 새 아이콘",
+  "바탕화면에 오늘전표 바로가기 자동 생성"
  ],
  "minExe": "6.4.0",
- "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"
+ "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/오늘전표.zip"
 }
