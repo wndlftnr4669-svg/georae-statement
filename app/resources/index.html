@@ -61,6 +61,16 @@ header h1{font-size:20px;margin:0}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:transparent;border:1px solid rgba(255,255,255,.45);color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}
 nav button.on{background:#fff;color:var(--pri);font-weight:bold}
+nav button.bkb{background:#ffc928;border-color:#ffc928;color:#3a2a00;font-weight:bold;margin-left:6px;position:relative}
+nav button.bkb.on{background:#fff;color:#8a5a00;border-color:#ffc928}
+nav button.bkb.due::after{content:'';position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:#e53935;border:2px solid #fff}
+.tile.bkt{border:2px solid #ffc928;background:#fffbea}
+.bkbig{font-size:19px;padding:16px 22px;border-radius:10px}
+.bkbig.usb{background:#e8890c}
+.bkst{font-size:16px;line-height:1.9}
+.bkst b{font-size:17px}
+.drv{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.drv button{font-size:17px;padding:12px 18px;border-radius:10px;background:#fff3e0;color:#5a3500;border:2px solid #e8890c;cursor:pointer;font-family:inherit;font-weight:bold}
 main{max-width:1100px;margin:0 auto;padding:16px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:14px}
 .card h2{font-size:18px;margin:0 0 12px}
@@ -206,6 +216,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
     <button data-t="items">품목</button>
     <button data-t="stock">재고</button>
     <button data-t="settings">설정</button>
+    <button data-t="backup" class="bkb" id="nav-bk">💾 백업</button>
   </nav>
 </header>
 
@@ -226,7 +237,8 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
         <button class="tile" onclick="goTab('clients')"><span class="ic">🏪</span><b>거래처</b><span>미수 · 입금 관리</span></button>
         <button class="tile" onclick="goTab('items')"><span class="ic">🥒</span><b>품목</b><span>품목 찾기 · 지난 거래</span></button>
         <button class="tile" onclick="goTab('stock')"><span class="ic">📦</span><b>재고</b><span>남은 물건 보기</span></button>
-        <button class="tile" onclick="goTab('settings')"><span class="ic">⚙️</span><b>설정</b><span>가게 정보 · 인쇄 · 백업</span></button>
+        <button class="tile" onclick="goTab('settings')"><span class="ic">⚙️</span><b>설정</b><span>가게 정보 · 인쇄</span></button>
+        <button class="tile bkt" onclick="goTab('backup')"><span class="ic">💾</span><b>백업</b><span>컴퓨터 · USB에 자료 보관</span></button>
       </div>
     </div>
     <div class="card">
@@ -394,6 +406,32 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 </section>
 
 <!-- 설정 -->
+<section data-t="backup" class="hide">
+<div class="card">
+  <h2>💾 자료 백업</h2>
+  <div class="bkst" id="bk-status"></div>
+  <div class="row" style="margin-top:12px;gap:12px">
+    <button class="btn bkbig" id="bk-now">💻 이 컴퓨터에 지금 백업</button>
+    <button class="btn bkbig usb" id="bk-usb">🔌 USB · 외장하드에 백업</button>
+  </div>
+  <div id="bk-drvbox" class="hide" style="margin-top:14px">
+    <div class="muted" id="bk-drvmsg">USB · 외장하드 찾는 중...</div>
+    <div class="drv" id="bk-drives"></div>
+  </div>
+</div>
+<div class="card" id="bk-pccard">
+  <h2>💻 컴퓨터 백업 폴더</h2>
+  <p class="muted" style="margin-top:0">프로그램을 쓰는 날마다 하루 한 번 이 폴더에 자동으로 백업돼요. (최근 30일치 보관)</p>
+  <div class="row"><input id="bk-dir" readonly style="flex:1;min-width:260px;font-size:15px"><button class="btn sub" id="bk-pick">폴더 바꾸기</button><button class="btn sub" id="bk-dopen">폴더 열기</button></div>
+  <div class="muted" id="bk-files" style="margin-top:8px;line-height:1.7"></div>
+</div>
+<div class="card">
+  <h2>📂 백업으로 되살리기</h2>
+  <p class="muted" style="margin-top:0">컴퓨터를 바꿨거나 자료가 날아갔을 때, 백업 파일을 골라서 그때 상태로 되돌려요. (지금 자료는 혹시 몰라 따로 한 번 저장해둬요)</p>
+  <button class="btn sub" id="bk-restore">백업 파일 골라서 되살리기</button>
+</div>
+</section>
+
 <section data-t="settings" class="hide">
 <p class="muted" style="margin:0 0 10px">바꾸면 바로 저장돼요.</p>
 <div class="card">
@@ -450,7 +488,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
     <label class="chk"><input type="checkbox" id="o-ime"> 입력은 한글로 시작</label>
   </div>
 </details>
-<details class="card fold"><summary>💾 백업 · 복원</summary>
+<details class="card fold"><summary>💾 백업 · 복원 <span class="muted" style="font-weight:normal">(위쪽 노란 [💾 백업] 버튼에서 더 쉽게 할 수 있어요)</span></summary>
   <p class="muted" style="margin-top:0" id="bk-desc">자료는 이 컴퓨터의 크롬 안에 저장돼요. 크롬 기록(쿠키·사이트 데이터)을 지우거나 다른 컴퓨터로 옮기면 사라지니까, 가끔 백업 파일을 받아두세요.</p>
   <div class="row">
     <button class="btn" id="bk-down">백업 파일 받기</button>
@@ -490,13 +528,14 @@ const KEY='gm_v1';
 function blank(){return{company:{name:'',bizno:'',ceo:'',addr:'',biz:'',kind:'',tel:'',bank:''},opt:{showBal:true,mono:false,defTax:'exempt',rowsPerPage:10,paper:'a5',a5dir:'portrait',offX:0,offY:0,scale:100},clients:[],items:[],invoices:[],payments:[],adj:[]}}
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.company){const b=blank();return Object.assign(b,s,{opt:Object.assign(b.opt,s.opt||{})})}}catch(e){}return blank()}
 const IS_APP=typeof NL_PATH!=='undefined'&&typeof Neutralino!=='undefined';
-let DATA_DIR='',lastBk='',saving=Promise.resolve();
+let DATA_DIR='',DOCS_DIR='',lastBk='',saving=Promise.resolve();
 const winPath=p=>String(p).replace(/\//g,'\\');
 function save(){IDX=null;BAL=null;RISKC=null;STKC=null;const txt=JSON.stringify(S);
-  if(IS_APP){saving=saving.then(async()=>{try{await Neutralino.filesystem.writeFile(DATA_DIR+'/data.json',txt);const d=today();if(lastBk!==d){await Neutralino.filesystem.writeFile(DATA_DIR+'/backup/'+d+'.json',txt);lastBk=d}}catch(e){alert('자료 저장에 실패했어요.\n프로그램 폴더에 쓰기 권한이 있는지 확인해주세요.\n('+(e.message||e.code||e)+')')}});return}
+  if(IS_APP){saving=saving.then(async()=>{try{await Neutralino.filesystem.writeFile(DATA_DIR+'/data.json',txt);const d=today();if(lastBk!==d){await Neutralino.filesystem.writeFile(DATA_DIR+'/backup/'+d+'.json',txt);lastBk=d;autoPcBackup(txt)}}catch(e){alert('자료 저장에 실패했어요.\n프로그램 폴더에 쓰기 권한이 있는지 확인해주세요.\n('+(e.message||e.code||e)+')')}});return}
   try{localStorage.setItem(KEY,txt)}catch(e){alert('저장에 실패했어요. 브라우저 저장공간을 확인해주세요.')}}
 async function appInit(){Neutralino.init();Neutralino.events.on('windowClose',onCloseReq);
   try{DATA_DIR=(await Neutralino.os.getPath('data')).replace(/[\\/]+$/,'')+'/GeoraeStatement'}catch(e){DATA_DIR=NL_PATH+'/data'}
+  try{DOCS_DIR=(await Neutralino.os.getPath('documents')).replace(/[\\/]+$/,'')}catch(e){DOCS_DIR=''}
   for(const d of [DATA_DIR,DATA_DIR+'/backup']){try{await Neutralino.filesystem.createDirectory(d)}catch(e){}}
   try{const t=await Neutralino.filesystem.readFile(DATA_DIR+'/data.json');const d=JSON.parse(t);if(d&&d.company){const b=blank();S=freezeAmts(Object.assign(b,d,{opt:Object.assign(b.opt,d.opt||{})}));IDX=null}}catch(e){}
   try{const st=await Neutralino.filesystem.readDirectory(DATA_DIR+'/backup');const f=st.map(x=>x.entry).filter(n=>/^\d{4}-\d\d-\d\d\.json$/.test(n)).sort();if(f.includes(today()+'.json'))lastBk=today();for(const old of f.slice(0,Math.max(0,f.length-10)))await Neutralino.filesystem.remove(DATA_DIR+'/backup/'+old)}catch(e){}}
@@ -630,9 +669,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.2.6';
+const APP_VER='2.2.7';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정] → 백업 → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정] → 백업의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.2.7',date:'2026-11-06',title:'백업 버튼',items:['메뉴 맨 오른쪽에 노란 [💾 백업] 버튼이 생겼어요.','프로그램을 쓰는 날마다 [문서] → [거래명세서 백업] 폴더에 자동으로 백업돼요. (최근 30일치, 폴더는 바꿀 수 있어요)','[USB · 외장하드에 백업]을 누르면 꽂혀 있는 USB · 외장하드를 찾아서 버튼으로 보여줘요. 누르기만 하면 저장돼요.','USB 백업을 일주일 넘게 안 하면 백업 버튼에 빨간 점이 떠요.','[백업 파일 골라서 되살리기]로 백업한 때로 되돌릴 수 있어요.']},
  {ver:'2.2.6',date:'2026-11-05',title:'글씨 크게 · 전체 삭제',items:['거래명세서 인쇄가 위아래 양옆으로 약 1cm씩 더 크게 나와요.','인쇄 글씨를 전부 키우고 굵게 했어요. 숫자가 길면 칸에 맞게 알아서 조금 줄어요.','혹시 가장자리가 잘리면 [설정] → 여백을 "넓게 11mm"로 바꿔주세요.','[품목]에 "품목 전체 삭제", [재고]에 "재고 전체 삭제" 버튼을 만들었어요. (명세서 · 매입 기록은 그대로 남아요)','거래처 장부에서 입금 잡을 때 커서가 바로 금액 칸에 가 있어요.']},
  {ver:'2.2.5',date:'2026-11-02',title:'단위 관리',items:['단위에 봉지 · 관을 추가했어요.','[설정] → 단위에서 단위를 추가 · 삭제하고, ▲▼로 순서를 바꿀 수 있어요. (위에 있을수록 앞 번호)']},
  {ver:'2.2.4',date:'2026-11-02',title:'단가 공란 · 원장 최근 순',items:['명세서 작성에서 품목을 골라도 단가는 비워둬요. (그날 시세대로 직접 넣기)','거래처 원장(입금 잡는 화면)에서 최근 기록이 맨 위에 나와요. (인쇄는 날짜 순 그대로)']},
@@ -657,7 +697,7 @@ const NOTICES=[
  {ver:'1.2',date:'2026-10-27',title:'검색 · 엑셀 저장',items:['거래 내역을 일별 · 월별 · 연별 · 기간으로 검색할 수 있어요.','거래처 · 품목 검색, 거래처별 · 날짜별 · 품목별 합계 보기를 추가했어요.','검색 결과와 거래처 미수 현황을 엑셀로 저장할 수 있어요.']},
  {ver:'1.1',date:'2026-10-27',title:'A5 용지 인쇄',items:['A5 용지에 거래처용 1장, 내 가게용 1장씩 따로 인쇄돼요.']},
  {ver:'1.0',date:'2026-10-27',title:'첫 버전',items:['거래명세서 작성 · 인쇄, 거래처 · 미수 관리, 품목 관리, 자료 백업.']}];
-const WTITLE={write:'📝 명세서 작성',list:'📋 거래 내역',clients:'🏪 거래처',items:'🥒 품목',stock:'📦 재고',settings:'⚙️ 설정'};
+const WTITLE={backup:'💾 백업',write:'📝 명세서 작성',list:'📋 거래 내역',clients:'🏪 거래처',items:'🥒 품목',stock:'📦 재고',settings:'⚙️ 설정'};
 document.querySelectorAll('section[data-t]').forEach(sec=>{const t=sec.dataset.t;if(t==='home')return;sec.classList.add('win');
   const body=document.createElement('div');body.className='win-body';while(sec.firstChild)body.appendChild(sec.firstChild);
   const bar=document.createElement('div');bar.className='win-bar';bar.innerHTML=`<span class="win-title">${WTITLE[t]}</span><button class="win-x" title="닫기 (Esc)">✕</button>`;
@@ -665,7 +705,7 @@ document.querySelectorAll('section[data-t]').forEach(sec=>{const t=sec.dataset.t
 function winTop(){const b=document.querySelector(`section[data-t="${curTab}"] .win-body`);if(b)b.scrollTop=0;else window.scrollTo(0,0)}
 const setHH=()=>document.documentElement.style.setProperty('--hh',document.querySelector('header').offsetHeight+'px');
 window.addEventListener('resize',setHH);setHH();
-function renderHome(){const t=today(),m=t.slice(0,7);let tc=0,ts=0,tp=0,ms=0,mb=0,mc=0,mbc=0;
+function renderHome(){bkDue();const t=today(),m=t.slice(0,7);let tc=0,ts=0,tp=0,ms=0,mb=0,mc=0,mbc=0;
   S.invoices.forEach(i=>{const T=invTotal(i).total,b=kindOf(i)==='buy';if(!b&&i.date===t){tc++;ts+=T;tp+=num(i.paid)}if(i.date.startsWith(m)){if(b){mbc++;mb+=T}else{mc++;ms+=T}}});
   S.payments.forEach(p=>{if(kindOf(p)==='sale'&&p.date===t)tp+=num(p.amount)});
   let mis=0,misN=0,pay=0,payN=0;S.clients.forEach(c=>{const b=curBalance(c.id),q=curBalance(c.id,'buy');if(Math.round(b)>0){mis+=b;misN++}if(Math.round(q)>0){pay+=q;payN++}});
@@ -679,7 +719,7 @@ function renderHome(){const t=today(),m=t.slice(0,7);let tc=0,ts=0,tp=0,ms=0,mb=
   const hr=$('#h-risk');if(hr)hr.onclick=async()=>{await goTab('clients');if(curTab==='clients'){$('#c-risk').checked=true;renderClients()}};
   $('#h-notice').innerHTML=NOTICES.map((n,k)=>`<details${n.pin||n.ver===APP_VER?' open':''}><summary>${n.pin?'<span class="tag pin">공지</span>':`<span class="tag${n.ver===APP_VER?' new':''}">${n.ver===APP_VER?'NEW ':''}v${n.ver}</span>`}<span class="t">${esc(n.title)}</span><span class="d">${n.date}</span></summary><ul>${n.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>`).join('')}
 let curTab='home';
-function tab(name){const prevTab=curTab;curTab=name;acClose();closeUnit();if(name==='home')for(const k in imeDone)delete imeDone[k];document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));document.querySelectorAll('section[data-t]').forEach(s=>s.classList.toggle('hide',s.dataset.t!==name&&s.dataset.t!=='home'));$('#win-dim').classList.toggle('hide',name==='home');if(name==='home')renderHome();winTop();({list:()=>{fillYears();renderList()},clients:renderClients,items:()=>{renderItems();renderItemSearch();setTimeout(()=>$('#is-q').focus(),30)},stock:renderStock,settings:renderSettings}[name]||(()=>{}))();winTop()}
+function tab(name){const prevTab=curTab;curTab=name;acClose();closeUnit();if(name==='home')for(const k in imeDone)delete imeDone[k];document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));document.querySelectorAll('section[data-t]').forEach(s=>s.classList.toggle('hide',s.dataset.t!==name&&s.dataset.t!=='home'));$('#win-dim').classList.toggle('hide',name==='home');if(name==='home')renderHome();winTop();({list:()=>{fillYears();renderList()},clients:renderClients,items:()=>{renderItems();renderItemSearch();setTimeout(()=>$('#is-q').focus(),30)},stock:renderStock,settings:renderSettings,backup:renderBackup}[name]||(()=>{}))();winTop()}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>goTab(b.dataset.t));
 /* ---------- 확인창 · 미저장 확인 ---------- */
 function ask(msg,btns){return new Promise(res=>{const m=document.createElement('div');m.className='modal';
@@ -1031,7 +1071,52 @@ function applyUIOpts(){const w=$('#f-tax-wrap');if(w)w.classList.toggle('hide',!
 document.querySelector('section[data-t="settings"]').addEventListener('change',e=>{const id=e.target.id||'';if(/^(s|o)-/.test(id)){saveSettings();applyUIOpts()}});
 $('#o-test').onclick=()=>{readPrintOpt();save();printInvs([sampleInv()])};
 $('#bk-down').onclick=async()=>{if(IS_APP){try{const p=await Neutralino.os.showSaveDialog('백업 파일 저장',{defaultPath:`거래명세서_백업_${today()}.json`,filters:[{name:'백업 파일',extensions:['json']}]});if(!p)return;await Neutralino.filesystem.writeFile(/\.json$/i.test(p)?p:p+'.json',JSON.stringify(S,null,1));toast('백업 파일을 저장했어요')}catch(e){alert('백업 저장에 실패했어요.')}return}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download=`거래명세서_백업_${today()}.json`;document.body.appendChild(a);a.click();a.remove();toast('백업 파일을 받았어요')};
-$('#bk-up').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.company||!Array.isArray(d.invoices))throw 0;if(!confirm(`백업 파일(명세서 ${d.invoices.length}건)로 지금 자료를 덮어쓸까요?`))return;const b=blank();S=freezeAmts(Object.assign(b,d,{opt:Object.assign(b.opt,d.opt||{})}));save();refreshLists();renderSettings();newForm();toast('복원했어요')}catch(x){alert('올바른 백업 파일이 아니에요.')}e.target.value=''};r.readAsText(f)};
+async function restoreText(txt){let d;try{d=JSON.parse(txt);if(!d.company||!Array.isArray(d.invoices))throw 0}catch(x){alert('올바른 백업 파일이 아니에요.');return}
+  const when=d.opt&&d.opt.savedAt?` (${new Date(d.opt.savedAt).toLocaleString('ko-KR')} 저장)`:'';
+  if(!confirm(`이 백업 파일${when}로 되돌릴까요?\n명세서 ${d.invoices.length}건 · 거래처 ${(d.clients||[]).length}곳\n\n지금 자료는 이 파일 내용으로 바뀌어요.`))return;
+  if(IS_APP){try{await Neutralino.filesystem.writeFile(DATA_DIR+'/backup/되살리기전_'+today()+'_'+Date.now()+'.json',JSON.stringify(S))}catch(e){}}
+  const keep={bkDir:S.opt.bkDir,bkLast:S.opt.bkLast,usbLast:S.opt.usbLast,usbPath:S.opt.usbPath},b=blank();S=freezeAmts(Object.assign(b,d,{opt:Object.assign(b.opt,d.opt||{},keep)}));save();refreshLists();renderSettings();newForm();if(curTab==='backup')renderBackup();toast('백업으로 되살렸어요')}
+$('#bk-up').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{restoreText(r.result);e.target.value=''};r.readAsText(f)};
+$('#bk-restore').onclick=async()=>{if(!IS_APP){$('#bk-up').click();return}
+  try{const r=await Neutralino.os.showOpenDialog('되살릴 백업 파일 고르기',{defaultPath:winPath(bkDir())+'\\',filters:[{name:'백업 파일',extensions:['json']},{name:'모든 파일',extensions:['*']}]});if(!r||!r.length)return;restoreText(await Neutralino.filesystem.readFile(r[0]))}catch(e){alert('백업 파일을 읽지 못했어요.\n('+(e.message||e.code||e)+')')}};
+
+/* ---------- 백업 창: 컴퓨터 폴더 + USB · 외장하드 ---------- */
+const bkDir=()=>S.opt.bkDir||(DOCS_DIR?DOCS_DIR+'/거래명세서 백업':DATA_DIR+'/backup');
+const pad2=n=>String(n).padStart(2,'0');
+const stamp=()=>{const d=new Date();return`${today()}_${pad2(d.getHours())}${pad2(d.getMinutes())}`};
+const bkText=()=>{S.opt.savedAt=Date.now();return JSON.stringify(S,null,1)};
+async function writeBk(dir,name,txt){dir=String(dir).replace(/[\\/]+$/,'');try{await Neutralino.filesystem.createDirectory(dir)}catch(e){}await Neutralino.filesystem.writeFile(dir+'/'+name,txt);return dir+'/'+name}
+async function autoPcBackup(txt){try{const dir=bkDir();await writeBk(dir,`거래명세서_${today()}.json`,txt);S.opt.bkLast=Date.now();
+    const f=(await Neutralino.filesystem.readDirectory(dir)).map(x=>x.entry).filter(n=>/^거래명세서_\d{4}-\d\d-\d\d\.json$/.test(n)).sort();for(const o of f.slice(0,Math.max(0,f.length-30)))await Neutralino.filesystem.remove(dir+'/'+o)}catch(e){}}
+const ago=t=>{if(!t)return'<span style="color:var(--warn)">아직 안 했어요</span>';const d=Math.floor((Date.now()-t)/864e5),s=new Date(t).toLocaleString('ko-KR',{month:'long',day:'numeric',hour:'numeric',minute:'2-digit'});return`${s} <span class="muted">(${d<1?'오늘':d+'일 전'})</span>`};
+function bkDue(){const b=$('#nav-bk');if(b)b.classList.toggle('due',!S.opt.usbLast||Date.now()-S.opt.usbLast>7*864e5)}
+async function renderBackup(){bkDue();
+  $('#bk-status').innerHTML=`💻 컴퓨터 백업: <b>${ago(S.opt.bkLast)}</b><br>🔌 USB · 외장하드 백업: <b>${ago(S.opt.usbLast)}</b>${S.opt.usbPath?` <span class="muted">(${esc(winPath(S.opt.usbPath))})</span>`:''}${!S.opt.usbLast||Date.now()-S.opt.usbLast>7*864e5?'<br><span style="color:var(--warn)">컴퓨터가 고장 나면 컴퓨터 백업도 같이 날아가요. 일주일에 한 번은 USB에도 받아두세요.</span>':''}`;
+  $('#bk-pccard').classList.toggle('hide',!IS_APP);if(!IS_APP){$('#bk-now').textContent='💾 백업 파일 받기';return}
+  $('#bk-dir').value=winPath(bkDir());
+  try{const f=(await Neutralino.filesystem.readDirectory(bkDir())).map(x=>x.entry).filter(n=>/^거래명세서_.*\.json$/.test(n)).sort().reverse();$('#bk-files').innerHTML=f.length?`백업 파일 ${f.length}개 · 최근: `+f.slice(0,3).map(esc).join(', '):'아직 백업 파일이 없어요.'}catch(e){$('#bk-files').textContent='아직 백업 파일이 없어요.'}}
+function bkDownload(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bkText()],{type:'application/json'}));a.download=`거래명세서_백업_${stamp()}.json`;document.body.appendChild(a);a.click();a.remove()}
+$('#bk-now').onclick=async()=>{if(!IS_APP){bkDownload();S.opt.bkLast=Date.now();save();renderBackup();toast('백업 파일을 받았어요');return}
+  try{const p=await writeBk(bkDir(),`거래명세서_${stamp()}.json`,bkText());S.opt.bkLast=Date.now();save();renderBackup();toast('컴퓨터에 백업했어요')}
+  catch(e){alert('백업 폴더에 저장하지 못했어요.\n[폴더 바꾸기]로 다른 폴더를 골라주세요.\n('+(e.message||e.code||e)+')')}};
+$('#bk-pick').onclick=async()=>{try{const p=await Neutralino.os.showFolderDialog('백업할 폴더 고르기',{defaultPath:winPath(bkDir())});if(!p)return;S.opt.bkDir=p.replace(/\\/g,'/');save();renderBackup();toast('백업 폴더를 바꿨어요')}catch(e){}};
+$('#bk-dopen').onclick=async()=>{try{await Neutralino.filesystem.createDirectory(bkDir())}catch(e){}try{Neutralino.os.execCommand(`explorer "${winPath(bkDir())}"`,{background:true})}catch(e){}};
+async function usbSave(root,label){const dir=root.replace(/[\\/]+$/,'')+'/거래명세서 백업';
+  try{const p=await writeBk(dir,`거래명세서_${stamp()}.json`,bkText());S.opt.usbLast=Date.now();S.opt.usbPath=dir;save();renderBackup();$('#bk-drvbox').classList.add('hide');
+    await ask(`<b>${esc(label)}</b>에 백업했어요.<br><br><span class="muted">${esc(winPath(p))}</span><br><br>USB를 뺄 땐 작업표시줄의 [하드웨어 안전하게 제거]를 누르고 빼주세요.`,[{label:'확인',val:1}])}
+  catch(e){alert('저장하지 못했어요. USB가 제대로 꽂혀 있는지 확인해주세요.\n('+(e.message||e.code||e)+')')}}
+function psRun(ps){const u=new Uint8Array(ps.length*2);for(let i=0;i<ps.length;i++){const c=ps.charCodeAt(i);u[i*2]=c&255;u[i*2+1]=c>>8}let bin='';u.forEach(b=>bin+=String.fromCharCode(b));
+  return Neutralino.os.execCommand(`powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand ${btoa(bin)}`)}
+const DRV_PS=`[Console]::OutputEncoding=[Text.Encoding]::UTF8;$o=@{};Get-CimInstance Win32_LogicalDisk|?{$_.DriveType -eq 2 -and $_.Size}|%{$o[$_.DeviceID]=$_.VolumeName+'|'+$_.Size+'|USB'};try{Get-Disk|?{$_.BusType -eq 'USB'}|Get-Partition|?{$_.DriveLetter}|%{$d=[string]$_.DriveLetter+':';if(-not $o.ContainsKey($d)){$v=Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$d'";$o[$d]=$v.VolumeName+'|'+$v.Size+'|HDD'}}}catch{};$o.Keys|%{$_+'|'+$o[$_]}`;
+$('#bk-usb').onclick=async()=>{if(!IS_APP){bkDownload();S.opt.usbLast=Date.now();save();renderBackup();toast('받은 파일을 USB로 옮겨주세요');return}
+  const box=$('#bk-drvbox'),L=$('#bk-drives');box.classList.remove('hide');$('#bk-drvmsg').textContent='USB · 외장하드 찾는 중...';L.innerHTML='';
+  let ds=[];try{const r=await psRun(DRV_PS);ds=String(r.stdOut||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(x=>{const[id,name,size,kind]=x.split('|');return{id,name:name||'',size:+size||0,kind}}).filter(d=>/^[A-Z]:$/.test(d.id)).sort((a,b)=>a.id.localeCompare(b.id))}catch(e){}
+  $('#bk-drvmsg').innerHTML=ds.length?'어디에 저장할까요? 눌러주세요.':'꽂혀 있는 USB · 외장하드를 못 찾았어요. 꽂혀 있으면 [직접 고르기]를 눌러주세요.';
+  const gb=n=>n?(n>=1e12?(n/1e12).toFixed(1)+'TB':Math.round(n/1e9)+'GB'):'';
+  L.innerHTML=ds.map(d=>`<button data-d="${d.id}" data-l="${esc((d.kind==='HDD'?'외장하드':'USB')+' '+d.id+(d.name?' '+d.name:''))}">${d.kind==='HDD'?'🗄':'🔌'} ${d.kind==='HDD'?'외장하드':'USB'} (${d.id})${d.name?' '+esc(d.name):''} <span style="font-weight:normal;font-size:14px">${gb(d.size)}</span></button>`).join('')+`<button data-pick="1" style="background:#fff;border-color:var(--line);color:var(--ink)">📁 직접 고르기</button>`;
+  L.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>usbSave(b.dataset.d+'/',b.dataset.l));
+  L.querySelector('[data-pick]').onclick=async()=>{try{const p=await Neutralino.os.showFolderDialog('백업 파일을 저장할 곳 (USB · 외장하드)',{defaultPath:S.opt.usbPath?winPath(S.opt.usbPath):''});if(!p)return;
+    const dir=p.replace(/\\/g,'/');try{const fn=`거래명세서_${stamp()}.json`,full=await writeBk(dir,fn,bkText());S.opt.usbLast=Date.now();S.opt.usbPath=dir;save();renderBackup();box.classList.add('hide');toast('백업했어요');await ask(`백업했어요.<br><br><span class="muted">${esc(winPath(full))}</span>`,[{label:'확인',val:1}])}catch(e){alert('저장하지 못했어요.\n('+(e.message||e.code||e)+')')}}catch(e){}}};
 $('#bk-reset').onclick=()=>{if(!confirm('모든 자료(가게정보·거래처·명세서)를 삭제할까요? 되돌릴 수 없어요.'))return;if(!confirm('정말 전부 지울까요? 백업 파일을 받아두셨나요?'))return;S=blank();save();refreshLists();renderSettings();newForm();toast('전체 삭제했어요')};
 
 $('#bk-open').onclick=()=>{try{Neutralino.os.execCommand(`explorer "${winPath(DATA_DIR)}"`,{background:true})}catch(e){}};
@@ -1228,7 +1313,7 @@ $('#st-xlsx').onclick=()=>{const M=stockMap(),rows=Object.values(M).filter(o=>$(
   inp.addEventListener('keydown',e=>acKey(e))});
 
 /* ---------- 시작 ---------- */
-(async function(){if(IS_APP){await appInit();$('#bk-open').classList.remove('hide');$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
+(async function(){if(IS_APP){await appInit();{const t=S.opt.bkLast;if(!t||new Date(t).toDateString()!==new Date().toDateString())autoPcBackup(JSON.stringify(S)).then(()=>save())}$('#bk-open').classList.remove('hide');setTimeout(bkDue,500);$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
   const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-from').value=t.slice(0,8)+'01';$('#l-to').value=t;fillYears();refreshLists();newForm();setMode('month');renderSettings();markClean('clients');markClean('items');applyUIOpts();if(!S.opt.invStart){S.opt.invStart=today();save()}$('#app-ver').textContent='v'+APP_VER;$('#upd-ver').textContent='v'+APP_VER;tab('home');if(IS_APP){imeInit().then(()=>setTimeout(imeHangul,1200));showWhatsNew();setTimeout(()=>checkUpdate(false),3000)}})();
 </script>
 </body>

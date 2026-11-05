@@ -1,12 +1,11 @@
 {
- "version": "2.2.6",
+ "version": "2.2.7",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "8b2fba9780bdb08c0eec4d0d88f44134e98706db600e4e610d37d46bb6846120",
- "size": 724369,
+ "sha256": "5e5f44a83771d82ee2cfbeb73ba17d4774289407a3c8303e4994f8cf4f9b2581",
+ "size": 736110,
  "notes": [
-  "인쇄 1cm씩 크게, 글씨 크고 굵게",
-  "품목/재고 전체 삭제 버튼",
-  "장부 입금 시 금액 칸에 바로 커서"
+  "메뉴에 [💾 백업] 버튼",
+  "문서 폴더 자동 백업, USB·외장하드 백업, 되살리기"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/간편거래명세서.zip"
