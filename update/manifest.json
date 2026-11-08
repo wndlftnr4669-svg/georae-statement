@@ -1,11 +1,11 @@
 {
- "version": "2.3.0",
+ "version": "2.3.1",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "c4b244b3a0793312bb95e708167fab68b779854f93bc8f91b5b9f7235aa1de3c",
- "size": 774621,
+ "sha256": "43d8812957489648d73c3324d6a1860a08e3b230de7a4f453139b0f3fee4b9b3",
+ "size": 778890,
  "notes": [
-  "이름을 오늘전표로 바꾸고 새 아이콘",
-  "바탕화면에 오늘전표 바로가기 자동 생성"
+  "거래처 월 총합 · 월별 합계 보기",
+  "품목 자동 저장 · 재고 메뉴/자동 반영 설정"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/오늘전표.zip"
