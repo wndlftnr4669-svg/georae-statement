@@ -1,11 +1,10 @@
 {
- "version": "2.3.1",
+ "version": "2.3.2",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "43d8812957489648d73c3324d6a1860a08e3b230de7a4f453139b0f3fee4b9b3",
- "size": 778890,
+ "sha256": "e70f5b725ffc1ead19bb93771d6810984cc047fed4594db81e71f8f19fc4607e",
+ "size": 780017,
  "notes": [
-  "거래처 월 총합 · 월별 합계 보기",
-  "품목 자동 저장 · 재고 메뉴/자동 반영 설정"
+  "새로 깐 컴퓨터에서 저장·종료·백업이 멈추던 문제 고침"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/오늘전표.zip"

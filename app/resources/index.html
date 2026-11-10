@@ -678,9 +678,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.3.1';
+const APP_VER='2.3.2';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정] → 백업 → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정] → 백업의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.3.2',date:'2026-11-11',title:'저장 · 종료 멈춤 고침',items:['새로 깐 컴퓨터에서 저장 · 종료 · 백업 버튼이 멈추던 문제를 고쳤어요.','(바탕화면 바로가기를 만드는 동안 프로그램 전체가 기다리던 게 원인이었어요)']},
  {ver:'2.3.1',date:'2026-11-09',title:'월 총합 · 품목/재고 설정',items:['[거래 내역]에서 거래처를 고르면 그 달(기간) 총합이 크게 나와요. 지난 잔액 + 이번 달 매출 − 입금 = 남은 잔액.','[월별 합계] 보기 버튼이 생겼어요.','[설정] → [품목 · 재고]에서 새 품목 자동 저장을 켜고 끌 수 있어요. (기본은 켜짐)','[재고] 메뉴를 숨길 수 있고, 매입하면 재고에 자동으로 더할지도 고를 수 있어요.']},
  {ver:'2.3.0',date:'2026-11-06',title:'이름이 "오늘전표"로 바뀌었어요',items:['프로그램 이름을 "오늘전표"로 바꾸고 새 아이콘을 달았어요.','바탕화면에 새 아이콘의 "오늘전표" 바로가기가 생겨요. 예전 바로가기가 있으면 그걸 바꿔줘요.','자료 · 백업 · 사용법은 전부 그대로예요.']},
  {ver:'2.2.7',date:'2026-11-06',title:'백업 버튼',items:['메뉴 맨 오른쪽에 노란 [💾 백업] 버튼이 생겼어요.','프로그램을 쓰는 날마다 [문서] → [거래명세서 백업] 폴더에 자동으로 백업돼요. (최근 30일치, 폴더는 바꿀 수 있어요)','[USB · 외장하드에 백업]을 누르면 꽂혀 있는 USB · 외장하드를 찾아서 버튼으로 보여줘요. 누르기만 하면 저장돼요.','USB 백업을 일주일 넘게 안 하면 백업 버튼에 빨간 점이 떠요.','[백업 파일 골라서 되살리기]로 백업한 때로 되돌릴 수 있어요.']},
@@ -766,7 +767,7 @@ let closing=false;
 async function onCloseReq(){if(closing||asking)return;asking=true;
   try{let ok;if(isDirty(curTab))ok=await resolveDirty(curTab,'끄기');
     else ok=(await ask('프로그램을 끌까요?',[{label:'끄기',val:'ok'},{label:'취소',val:'cancel',cls:'sub'}]))==='ok';
-    if(!ok)return;closing=true;try{await saving}catch(e){}imeStop();Neutralino.app.exit()}finally{asking=false}}
+    if(!ok)return;closing=true;try{await Promise.race([saving,new Promise(r=>setTimeout(r,6000))])}catch(e){}imeStop();Neutralino.app.exit()}finally{asking=false}}
 window.addEventListener('beforeunload',e=>{if(!IS_APP&&isDirty(curTab)){e.preventDefault();e.returnValue=''}});
 function refreshLists(){$('#dl-clients').innerHTML=S.clients.map(c=>`<option value="${esc(c.name)}">`).join('');$('#dl-items').innerHTML=S.items.map(i=>`<option value="${esc(i.name)}">${esc(i.spec||'')}</option>`).join('');$('#need-setup').classList.toggle('hide',!!S.company.name)}
 
@@ -1111,7 +1112,7 @@ $new=Join-Path $d '오늘전표.lnk';$old=@(Get-ChildItem -LiteralPath $d -Filte
 if($old.Count -gt 0 -and -not (Test-Path -LiteralPath $new)){Move-Item -LiteralPath $old[0].FullName -Destination $new}
 foreach($o in $old|Select-Object -Skip 1){$l=$w.CreateShortcut($o.FullName);$l.IconLocation="$ico,0";$l.Save()}
 $s=$w.CreateShortcut($new);$s.TargetPath=$exe;$s.WorkingDirectory=Split-Path $exe;$s.IconLocation="$ico,0";$s.Description='오늘전표';$s.Save();'ok'`;
-    const r=await psRun(ps);if(String(r.stdOut||'').includes('ok'))await Neutralino.filesystem.writeFile(flag,new Date().toISOString())}catch(e){}}
+    const r=await psRun(ps,15000);await Neutralino.filesystem.writeFile(flag,new Date().toISOString()+(String(r.stdOut||'').includes('ok')?' ok':' fail'))}catch(e){}}
 
 /* ---------- 백업 창: 컴퓨터 폴더 + USB · 외장하드 ---------- */
 const bkDir=()=>S.opt.bkDir||(DOCS_DIR?DOCS_DIR+'/거래명세서 백업':DATA_DIR+'/backup');
@@ -1138,8 +1139,15 @@ async function usbSave(root,label){const dir=root.replace(/[\\/]+$/,'')+'/거래
   try{const p=await writeBk(dir,`거래명세서_${stamp()}.json`,bkText());S.opt.usbLast=Date.now();S.opt.usbPath=dir;save();renderBackup();$('#bk-drvbox').classList.add('hide');
     await ask(`<b>${esc(label)}</b>에 백업했어요.<br><br><span class="muted">${esc(winPath(p))}</span><br><br>USB를 뺄 땐 작업표시줄의 [하드웨어 안전하게 제거]를 누르고 빼주세요.`,[{label:'확인',val:1}])}
   catch(e){alert('저장하지 못했어요. USB가 제대로 꽂혀 있는지 확인해주세요.\n('+(e.message||e.code||e)+')')}}
-function psRun(ps){const u=new Uint8Array(ps.length*2);for(let i=0;i<ps.length;i++){const c=ps.charCodeAt(i);u[i*2]=c&255;u[i*2+1]=c>>8}let bin='';u.forEach(b=>bin+=String.fromCharCode(b));
-  return Neutralino.os.execCommand(`powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand ${btoa(bin)}`)}
+function psRun(ps,ms){const u=new Uint8Array(ps.length*2);for(let i=0;i<ps.length;i++){const c=ps.charCodeAt(i);u[i*2]=c&255;u[i*2+1]=c>>8}let bin='';u.forEach(b=>bin+=String.fromCharCode(b));
+  /* 주의: execCommand(동기)는 PowerShell이 멈추면 저장·종료까지 전부 멈춤 → 반드시 spawnProcess + 시간제한 */
+  const cmd=`powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand ${btoa(bin)}`;
+  return new Promise(res=>{let id=null,done=false;const buf={};
+    const fin=()=>{if(done)return;done=true;Neutralino.events.off('spawnedProcess',h);res({stdOut:id!=null&&buf[id]?buf[id].out:''})};
+    const h=e=>{const d=e.detail||{};const b=buf[d.id]=buf[d.id]||{out:'',exit:false};if(d.action==='stdOut')b.out+=d.data;if(d.action==='exit'){b.exit=true;if(d.id===id)fin()}};
+    Neutralino.events.on('spawnedProcess',h);
+    Neutralino.os.spawnProcess(cmd).then(p=>{id=p.id;if(buf[id]&&buf[id].exit)fin()}).catch(()=>fin());
+    setTimeout(()=>{if(!done&&id!=null)Neutralino.os.updateSpawnedProcess(id,'exit').catch(()=>{});fin()},ms||12000)})}
 const DRV_PS=`[Console]::OutputEncoding=[Text.Encoding]::UTF8;$o=@{};Get-CimInstance Win32_LogicalDisk|?{$_.DriveType -eq 2 -and $_.Size}|%{$o[$_.DeviceID]=$_.VolumeName+'|'+$_.Size+'|USB'};try{Get-Disk|?{$_.BusType -eq 'USB'}|Get-Partition|?{$_.DriveLetter}|%{$d=[string]$_.DriveLetter+':';if(-not $o.ContainsKey($d)){$v=Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$d'";$o[$d]=$v.VolumeName+'|'+$v.Size+'|HDD'}}}catch{};$o.Keys|%{$_+'|'+$o[$_]}`;
 $('#bk-usb').onclick=async()=>{if(!IS_APP){bkDownload();S.opt.usbLast=Date.now();save();renderBackup();toast('받은 파일을 USB로 옮겨주세요');return}
   const box=$('#bk-drvbox'),L=$('#bk-drives');box.classList.remove('hide');$('#bk-drvmsg').textContent='USB · 외장하드 찾는 중...';L.innerHTML='';

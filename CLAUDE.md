@@ -18,3 +18,5 @@
 - 이름: 2026-11-06 v2.3.0부터 "오늘전표". 아이콘 원본 app/resources/icons/(appIcon.png, app.ico). exe 아이콘은 못 바꾸니(exe 무수정 원칙)
   앱이 처음 켜질 때 바탕화면에 app.ico를 입힌 "오늘전표.lnk" 바로가기를 만듦(makeShortcut, DATA_DIR/shortcut_v1.txt로 1회).
   자료 폴더(GeoraeStatement), 백업 파일명(거래명세서_날짜.json)·기본 백업폴더(문서/거래명세서 백업)는 기존 사용자 때문에 그대로 둠.
+- **절대 os.execCommand를 background 없이 쓰지 말 것.** Neutralino는 execCommand를 서버 스레드에서 동기로 기다려서, 명령이 멈추면 저장(writeFile)·종료·백업이 전부 멈춤
+  (v2.3.0~2.3.1 새 설치 PC에서 바로가기 PowerShell 때문에 실제로 발생). 결과가 필요하면 psRun(spawnProcess + 시간제한) 사용.
