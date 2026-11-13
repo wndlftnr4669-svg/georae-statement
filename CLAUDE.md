@@ -24,3 +24,6 @@
   자료 파일 쓰기는 반드시 writeBig(1.5M글자씩 .tmp에 append → 크기 확인 → move) 사용. filesystem.writeFile로 S 전체를 한 번에 쓰지 말 것.
   연결 끊김은 'serverOffline' 이벤트/시간초과로 감지 → goNetDown(IndexedDB 임시보관 + 빨간 알림, [다시 연결하기]=reload 후 stashCheck로 저장).
 - 테스트판 배포: APP_VER를 4자리(예 2.3.2.1)로 → manifest보다 높아 업데이트 알림 안 뜨고, 헤더에 "테스트" 표시. 다음 정식(2.3.3)은 그보다 높아서 자동으로 넘어감.
+- **웹 버전(테스트, web-test 브랜치):** 같은 index.html을 `tools/build_web.sh`로 docs/에 복사(neutralino.js 대신 supabase.js + config.js 넣음) → GitHub Pages(web-test 브랜치 /docs).
+  window.OJP_WEB={url,key}가 있으면 IS_WEB. 로그인=휴대폰번호→`u<번호>@ojeonpyo.app` 이메일(메일 확인 꺼둠). 자료는 storage 버킷 stores/<uid>/data.json.gz(gzip 통째),
+  하루 1번 backup/날짜.json.gz(30일). IndexedDB에 먼저 쓰고(dirty) 업로드 성공하면 해제. 업로드 전 list로 updated_at 비교해 다른 기기 변경 감지. 설정 SQL은 web/supabase_setup.sql.

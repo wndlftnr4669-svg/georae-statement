@@ -1,0 +1,1493 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>오늘전표</title>
+<link rel="icon" href="icons/appIcon.png">
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--ink:#1d2330;--sub:#6b7280;--line:#d9dde3;--pri:#1f6f4a;--warn:#b42318}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:16px}
+#cloud{font-size:13px;margin-left:10px;padding:3px 9px;border-radius:12px;background:rgba(255,255,255,.18);vertical-align:3px;font-weight:normal;cursor:pointer}
+#cloud[data-st=err]{background:#ffcdd2;color:#b71c1c;font-weight:bold}#cloud[data-st=busy],#cloud[data-st=wait]{background:rgba(255,255,255,.3)}
+#login{position:fixed;inset:0;z-index:10000;background:linear-gradient(160deg,#1f7a4d,#14553a);display:flex;align-items:center;justify-content:center;padding:16px}
+#login .lbox{background:#fff;border-radius:16px;padding:28px 26px;width:100%;max-width:400px;box-shadow:0 10px 40px rgba(0,0,0,.3);text-align:center}
+#login h1{margin:8px 0 4px;font-size:30px;color:var(--pri)}#login p{margin:0 0 18px;color:#666;font-size:15px}
+#login label{display:block;text-align:left;font-size:16px;font-weight:bold;margin:12px 0 6px}
+#login input{width:100%;box-sizing:border-box;font-size:22px;padding:12px 14px;border:2px solid #cfd8d3;border-radius:10px}
+#login input:focus{border-color:var(--pri);outline:none}
+#login button{width:100%;font-size:20px;padding:14px;border-radius:10px;margin-top:16px;border:0;background:var(--pri);color:#fff;font-weight:bold;cursor:pointer;font-family:inherit}
+#login button.sub{background:#eef3f0;color:var(--pri);margin-top:10px;font-size:17px;padding:12px}
+#login .err{color:#c62828;margin-top:12px;font-size:16px;min-height:22px;font-weight:bold}
+header{background:var(--pri);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:6}
+header h1{cursor:pointer}
+header .ver{font-size:12px;opacity:.75;font-weight:normal;margin-left:6px}
+/* 첫 화면 */
+.home{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px}
+@media(max-width:900px){.home{grid-template-columns:1fr}}
+.hello{font-size:20px;font-weight:bold;margin:0 0 2px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tile{border:1px solid var(--line);background:#fff;border-radius:10px;padding:16px 14px;text-align:left;cursor:pointer;font:inherit;color:var(--ink);display:flex;flex-direction:column;gap:6px;transition:border-color .15s,box-shadow .15s}
+.tile:hover{border-color:var(--pri);box-shadow:0 2px 10px rgba(31,111,74,.15)}
+.tile .ic{font-size:24px}
+.tile b{font-size:17px}
+.tile span{font-size:14px;color:var(--sub)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.stat{background:#f0f6f2;border-radius:8px;padding:12px}
+.stat .k{font-size:12px;color:var(--sub)}
+.stat .v{font-size:20px;font-weight:bold;margin-top:4px;font-variant-numeric:tabular-nums}
+.stat .s{font-size:12px;color:var(--sub);margin-top:2px}
+.notice-list details{border-bottom:1px solid var(--line);padding:2px 0}
+.notice-list details:last-child{border-bottom:0}
+.notice-list summary{cursor:pointer;list-style:none;display:flex;gap:8px;align-items:center;padding:9px 2px}
+.notice-list summary::-webkit-details-marker{display:none}
+.notice-list summary .t{flex:1;font-weight:bold;font-size:14px}
+.notice-list summary .d{font-size:12px;color:var(--sub);white-space:nowrap}
+.notice-list ul{margin:0 0 10px;padding-left:20px;line-height:1.7;color:#374151}
+.tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:10px;background:#eef0f3;color:var(--sub);white-space:nowrap}
+.urow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);max-width:420px}
+.urow .un{width:28px;color:var(--sub);text-align:center}
+.urow b{flex:1}
+.rk{color:var(--warn);font-weight:bold;font-size:12px}
+tr.risk td{background:#fdecec}
+.stat.warn{background:#fdecec;cursor:pointer}
+.stat.warn .v{color:var(--warn)}
+.tag.sale{background:#e6effb;color:#1f4e9c;font-weight:bold}
+.tag.buy{background:#fff0e0;color:#b45309;font-weight:bold}
+.card.buymode{border:2px solid #f0a35e;background:#fffaf4}
+.buyck{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+.buymode .buyck{border-color:#f0a35e;background:#fff0e0}
+.tag.new{background:#fde8e6;color:var(--warn);font-weight:bold}
+.tag.pin{background:#fff3d6;color:#8a5a00;font-weight:bold}
+/* 프로그램 안 창 */
+#win-dim{position:fixed;inset:0;background:rgba(20,24,32,.35);z-index:4}
+section.win{position:fixed;z-index:5;left:50%;transform:translateX(-50%);top:calc(var(--hh,56px) + 10px);bottom:12px;width:min(1160px,calc(100vw - 24px));background:var(--bg);border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden;border:1px solid #c9cfd6}
+.win-bar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;background:#fff;border-bottom:1px solid var(--line)}
+.win-title{flex:1;font-weight:bold;font-size:15px}
+.win-x{border:0;background:transparent;width:36px;height:30px;border-radius:6px;font-size:16px;cursor:pointer;color:var(--sub)}
+.win-x:hover{background:#e5484d;color:#fff}
+.win-body{flex:1;overflow:auto;padding:14px}
+.win-body>.card:last-child{margin-bottom:0}
+header h1{font-size:20px;margin:0}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:transparent;border:1px solid rgba(255,255,255,.45);color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}
+nav button.on{background:#fff;color:var(--pri);font-weight:bold}
+nav button.bkb{background:#ffc928;border-color:#ffc928;color:#3a2a00;font-weight:bold;margin-left:6px;position:relative}
+nav button.bkb.on{background:#fff;color:#8a5a00;border-color:#ffc928}
+nav button.bkb.due::after{content:'';position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:#e53935;border:2px solid #fff}
+.tile.bkt{border:2px solid #ffc928;background:#fffbea}
+.bkbig{font-size:19px;padding:16px 22px;border-radius:10px}
+.bkbig.usb{background:#e8890c}
+.bkst{font-size:16px;line-height:1.9}
+.bkst b{font-size:17px}
+.drv{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.drv button{font-size:17px;padding:12px 18px;border-radius:10px;background:#fff3e0;color:#5a3500;border:2px solid #e8890c;cursor:pointer;font-family:inherit;font-weight:bold}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:14px}
+.card h2{font-size:18px;margin:0 0 12px}
+details.fold>summary{cursor:pointer;font-size:18px;font-weight:bold;list-style:none;padding:2px 0}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::after{content:' ▾';color:var(--sub);font-weight:normal}
+details.fold[open]>summary{margin-bottom:12px}
+details.fold[open]>summary::after{content:' ▴'}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--sub)}
+label.chk{flex-direction:row;align-items:center;gap:6px;font-size:14px;color:var(--ink)}
+label.chk input{width:auto}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:5px;color:var(--ink);background:#fff;width:100%}
+input:focus,select:focus{outline:2px solid var(--pri);outline-offset:-1px}
+input.n{text-align:right}
+table.t{width:100%;border-collapse:collapse}
+table.t th,table.t td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:middle}
+table.t th{background:#f0f2f5;font-size:14px;color:var(--sub);white-space:nowrap}
+table.t td.n,table.t th.n{text-align:right}
+#rows{min-width:680px}
+#rows td{padding:3px 4px}
+.qtyw{display:flex;gap:4px;align-items:center}
+.u-tag{flex:none;min-width:44px;padding:5px 6px;border:1px solid var(--pri);border-radius:5px;background:#e9f4ee;color:var(--pri);font:inherit;font-size:13px;cursor:pointer}
+.u-tag.empty{border-color:var(--line);background:#fff;color:#9aa1ab}
+.unitpop{position:fixed;z-index:30;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:4px;display:flex;flex-direction:column;min-width:110px}
+.unitpop button{border:0;background:#fff;text-align:left;padding:7px 10px;border-radius:5px;font:inherit;cursor:pointer;color:var(--ink)}
+.unitpop button small{display:inline-block;width:16px;color:var(--sub)}
+.unitpop button.on{background:var(--pri);color:#fff}
+.unitpop button.on small{color:#cfe8da}
+.acpop{position:fixed;z-index:30;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:4px;min-width:260px;max-width:420px}
+.acpop button{display:flex;gap:10px;align-items:baseline;width:100%;border:0;background:#fff;text-align:left;padding:7px 10px;border-radius:5px;font:inherit;cursor:pointer;color:var(--ink)}
+.acpop button .m{color:var(--sub);font-size:12px;margin-left:auto;white-space:nowrap}
+.acpop button .u{display:inline-block;padding:1px 6px;border-radius:4px;background:#e9f4ee;color:var(--pri);font-size:12px}
+.acpop button.on{background:var(--pri);color:#fff}
+.acpop button.on .m{color:#cfe8da}
+.acpop button.on .u{background:rgba(255,255,255,.2);color:#fff}
+.unitpop .hint{font-size:11px;color:var(--sub);padding:4px 8px 2px}
+.btn{background:var(--pri);color:#fff;border:0;padding:10px 18px;border-radius:6px;cursor:pointer;font:inherit;white-space:nowrap}
+.btn.sub{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.del{background:#fff;color:var(--warn);border:1px solid #f0c4c0}
+.btn.sm{padding:6px 10px;font-size:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.acts{display:flex;gap:4px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff}
+.seg button{border:0;border-right:1px solid var(--line);background:#fff;padding:6px 12px;cursor:pointer;font:inherit;color:var(--ink)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--pri);color:#fff;font-weight:bold}
+table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--line)}
+.sum{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;font-size:15px;margin-top:12px;padding:10px 12px;background:#f0f6f2;border-radius:6px}
+.sum b{font-size:17px}
+.muted{color:var(--sub);font-size:14px}
+.hide{display:none!important}
+.tbl-wrap{overflow-x:auto}
+.notice{background:#fff7e6;border:1px solid #f5d38a;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.modal{position:fixed;inset:0;background:rgba(20,24,32,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal .box{background:#fff;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.3);padding:22px 22px 16px;max-width:420px;width:100%}
+.modal .msg{font-size:15px;line-height:1.6;margin-bottom:18px}
+.modal .btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1d2330;color:#fff;padding:10px 18px;border-radius:20px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+#toast.on{opacity:1}
+#pv{position:fixed;inset:0;background:rgba(20,24,32,.65);overflow:auto;z-index:10;padding:16px}
+.pv-bar{position:sticky;top:0;display:flex;gap:8px;justify-content:center;margin-bottom:12px;z-index:2}
+.pv-in .sheet{margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);zoom:.8}
+@media(max-width:820px){.pv-in .sheet{zoom:.45}}
+
+/* ===== 인쇄 양식 ===== */
+#print{display:none}
+.sheet{width:210mm;height:296.5mm;background:#fff;overflow:hidden;break-after:page;page-break-after:always;color:#111}
+.half{height:148mm;padding:3.5mm 5mm 2.5mm;display:flex;flex-direction:column;gap:1.6mm;font-size:10.5pt;font-weight:600;color:var(--c)}
+.half.t{border-bottom:.3mm dashed #999}
+.a5{width:210mm;height:147.5mm;background:#fff;overflow:hidden;break-after:page;page-break-after:always;color:#111}
+.a5{position:relative}
+.a5 .half{height:147.5mm}
+.pg{position:relative;overflow:hidden;background:#fff;break-after:page;page-break-after:always;color:#111;box-sizing:content-box}
+.pgpos{position:absolute;transform-origin:0 0;overflow:hidden}
+.pgin{background:#fff}
+.pgin>.half{height:147.5mm}
+.sheetin{width:210mm;height:296.5mm;background:#fff;overflow:hidden}
+.pv-in .pg{margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);zoom:.8;padding:var(--m,0)}
+@media(max-width:820px){.pv-in .pg{zoom:.45}}
+.a5in{position:absolute;left:0;top:0;width:210mm;height:147.5mm;transform-origin:0 0}
+.a5p{width:148mm;height:209.5mm;background:#fff;overflow:hidden;break-after:page;page-break-after:always;color:#111;position:relative}
+.pv-in .a5p{margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);zoom:.8}
+.pv-in .a5{margin:0 auto 16px;box-shadow:0 2px 14px rgba(0,0,0,.35);zoom:.8}
+@media(max-width:820px){.pv-in .a5,.pv-in .a5p{zoom:.45}}
+.mono .half{--c:#222 !important}
+.half table{border-collapse:collapse;width:100%}
+.half th,.half td{border:.3mm solid var(--c);padding:.4mm 1.2mm;color:#000}
+.half th{color:var(--c);font-weight:bold;white-space:nowrap;text-align:center}
+.hd{display:grid;grid-template-columns:1fr auto 1fr;align-items:end}
+.hd .no{color:#000;font-size:10.5pt;font-weight:bold}
+.hd .title{font-size:23pt;font-weight:bold;letter-spacing:3mm;color:var(--c);padding-left:3mm}
+.hd .lbl{text-align:right;font-size:10.5pt;font-weight:bold}
+.top2{display:grid;grid-template-columns:74mm 1fr;gap:3mm}
+.buyer{border:.3mm solid var(--c);padding:1.5mm 3mm;display:flex;flex-direction:column;justify-content:space-between;color:#000;gap:.8mm;font-size:11pt;font-weight:bold}
+.buyer .bn{font-size:17pt;font-weight:bold;border-bottom:.25mm solid var(--c);padding-bottom:.5mm}
+.buyer .bn small{font-size:11pt;font-weight:normal;color:var(--c)}
+.sup .v{width:6mm;line-height:1.35}
+.sup td{font-size:10.5pt;font-weight:bold}
+.sup .bz{font-size:13pt;letter-spacing:.5mm;font-weight:bold}
+.tot{border:.3mm solid var(--c);padding:1.2mm 3mm;color:#000;font-size:11pt;font-weight:bold;display:flex;gap:4mm;align-items:baseline}
+.tot .k{color:var(--c)}
+.tot b{font-size:var(--tb,14pt)}
+.tot em{margin-left:auto;font-style:normal;color:var(--c)}
+.it{table-layout:fixed}
+.it td{height:6.35mm;font-size:12.5pt;font-weight:bold;white-space:nowrap;overflow:hidden;line-height:1.15}
+.it td.sm{font-size:10.5pt}.it td.xs{font-size:9pt}
+.it th{font-size:11pt}
+.half .n{text-align:right}
+.half .c{text-align:center}
+.ft td{text-align:right;white-space:nowrap;font-size:var(--fz,12pt);font-weight:bold}
+.ft th{font-size:calc(var(--fz,12pt) - 1pt);padding:.4mm .8mm}
+.ft .sign{color:var(--c);width:16mm}
+.cont{text-align:center;color:#111;padding:2mm}
+.bank{color:#000;font-size:11pt;font-weight:bold}
+.lp{width:210mm;padding:14mm 14mm;font-size:10pt;color:#111;background:#fff}
+.lp h1{font-size:16pt;text-align:center;margin:0 0 4mm}
+.lp table{width:100%;border-collapse:collapse}
+.lp th,.lp td{border:.25mm solid #444;padding:1.2mm 2mm}
+.lp th{background:#eee}
+.lp .n{text-align:right}
+.lp h3{font-size:11pt;margin:4mm 0 2mm}
+.lp table.t th,.lp table.t td{border:.25mm solid #444;padding:1.2mm 2mm}
+.lp .tag{border:0;background:none;padding:0}
+
+@media print{
+  body{background:#fff}
+  header,main,#pv,#toast,#netbar,#login,#win-dim,section.win,.modal,.acpop,.unitpop{display:none!important}
+  html,body{background:#fff!important}
+  #print{display:block}
+}
+</style>
+<style id="pagesize">@page{size:A5 landscape;margin:0}</style>
+</head>
+<body>
+<header>
+  <h1 onclick="goTab('home')" title="첫 화면"><img src="icons/appIcon.png" alt="" style="width:30px;height:30px;vertical-align:-7px;margin-right:7px;border-radius:8px;box-shadow:0 0 0 2px rgba(255,255,255,.7)">오늘전표<span class="ver" id="app-ver"></span><span id="cloud" class="hide" title="서버 저장 상태"></span></h1>
+  <nav>
+    <button data-t="write" class="on">명세서 작성</button>
+    <button data-t="buy">매입 작성</button>
+    <button data-t="list">거래 내역</button>
+    <button data-t="clients">거래처</button>
+    <button data-t="items">품목</button>
+    <button data-t="stock">재고</button>
+    <button data-t="settings">설정</button>
+    <button data-t="backup" class="bkb" id="nav-bk">💾 백업</button>
+  </nav>
+</header>
+
+<main>
+<div class="notice hide" id="need-setup">우리 가게 정보(상호, 사업자번호 등)를 먼저 입력해야 명세서에 찍혀요. <button class="btn sm" onclick="goTab('settings')">가게 정보 입력하기</button></div>
+
+<!-- 첫 화면 -->
+<section data-t="home">
+<div class="home">
+  <div>
+    <div class="card">
+      <p class="hello" id="h-hello"></p>
+      <p class="muted" style="margin:0 0 14px">메뉴를 누르면 창이 열려요. 다 쓰고 창 오른쪽 위 ✕ (또는 Esc)로 닫으면 돼요.</p>
+      <div class="tiles">
+        <button class="tile" onclick="goTab('write')"><span class="ic">📝</span><b>명세서 작성</b><span>팔고 명세서 뽑기</span></button>
+        <button class="tile" onclick="goTab('buy')"><span class="ic">📥</span><b>매입 작성</b><span>산 물건 적기</span></button>
+        <button class="tile" onclick="goTab('list')"><span class="ic">📋</span><b>거래 내역</b><span>날짜별로 찾아보기</span></button>
+        <button class="tile" onclick="goTab('clients')"><span class="ic">🏪</span><b>거래처</b><span>미수 · 입금 관리</span></button>
+        <button class="tile" onclick="goTab('items')"><span class="ic">🥒</span><b>품목</b><span>품목 찾기 · 지난 거래</span></button>
+        <button class="tile" id="tile-stock" onclick="goTab('stock')"><span class="ic">📦</span><b>재고</b><span>남은 물건 보기</span></button>
+        <button class="tile" onclick="goTab('settings')"><span class="ic">⚙️</span><b>설정</b><span>가게 정보 · 인쇄</span></button>
+        <button class="tile bkt" onclick="goTab('backup')"><span class="ic">💾</span><b>백업</b><span>컴퓨터 · USB에 자료 보관</span></button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>오늘 · 이번 달</h2>
+      <div class="stats" id="h-stats"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>📢 공지사항 · 업데이트 내역</h2>
+    <div class="notice-list" id="h-notice"></div>
+  </div>
+</div>
+</section>
+
+<!-- 작성 -->
+<section data-t="write" class="hide">
+<div class="card">
+  <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 id="w-title" style="margin:0">거래명세서 작성</h2>
+    <input type="checkbox" id="f-buy" class="hide"></div>
+  <div class="grid">
+    <label>거래일자<input type="date" id="f-date"></label>
+    <label><span id="f-client-lbl">거래처 (공급받는자)</span><input id="f-client" placeholder="이름 입력하면 목록이 떠요" autocomplete="off"><span id="f-risk" class="rk"></span></label>
+    <label id="f-tax-wrap">세금<select id="f-tax"><option value="exempt">면세 (농산물)</option><option value="add10">과세 (부가세 10% 별도)</option></select></label>
+    <label><span id="f-paid-lbl">이번에 받은 돈 (입금액)</span><input id="f-paid" class="n" autocomplete="off" data-num="1" data-comma="1" placeholder="0"></label>
+  </div>
+  <div class="tbl-wrap" style="margin-top:12px">
+    <table class="t" id="rows">
+      <thead><tr><th style="width:22%">품목</th><th style="width:14%">규격</th><th class="n" style="width:17%">수량 · 단위</th><th class="n" style="width:13%">단가</th><th class="n" style="width:14%">금액</th><th>비고</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="row" style="margin-top:8px"><button class="btn sub sm" id="b-addrow">+ 줄 추가</button><span class="muted">Enter → 다음 칸 &nbsp;·&nbsp; 수량 다음 Enter → 단위 고르기</span></div>
+  <div class="sum" id="f-sum"></div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn" id="b-save">저장</button>
+    <button class="btn" id="b-saveprint">저장 후 인쇄</button>
+    <button class="btn sub" id="b-preview">미리보기</button>
+    <button class="btn sub" id="b-new">새로 쓰기</button>
+  </div>
+</div>
+</section>
+
+<!-- 내역 -->
+<section data-t="list" class="hide">
+<div class="card">
+  <h2>거래 내역 검색</h2>
+  <div class="row" style="margin-bottom:8px">
+    <div class="seg" id="l-kind"><button data-k="all" class="on">매출 + 매입</button><button data-k="sale">매출만</button><button data-k="buy">매입만</button></div>
+    <div class="seg" id="l-mode"><button data-m="day">일별</button><button data-m="month" class="on">월별</button><button data-m="year">연별</button><button data-m="range">기간 지정</button><button data-m="all">전체</button></div>
+  </div>
+  <div class="row" style="margin-bottom:8px">
+    <button class="btn sub sm" id="l-prev" title="이전">◀</button>
+    <input type="date" id="l-day" style="width:auto">
+    <input type="month" id="l-mon" style="width:auto">
+    <select id="l-year" style="width:auto"></select>
+    <span id="l-range" class="row" style="gap:4px"><input type="date" id="l-from" style="width:auto"> ~ <input type="date" id="l-to" style="width:auto"></span>
+    <button class="btn sub sm" id="l-next" title="다음">▶</button>
+    <button class="btn sub sm" id="l-now">오늘로</button>
+  </div>
+  <div class="row" style="margin-bottom:10px">
+    <input id="l-client" list="dl-clients" placeholder="🔍 거래처 검색 (비우면 전체)" style="width:220px" autocomplete="off">
+    <input id="l-item" list="dl-items" placeholder="🔍 품목 검색" style="width:180px" autocomplete="off">
+    <button class="btn sub sm" id="l-clear">검색 지우기</button>
+  </div>
+  <div class="sum" id="l-sum" style="margin:0 0 12px"></div>
+  <div id="l-ctot" class="hide" style="margin:0 0 12px;padding:12px 16px;border:2px solid var(--pri);border-radius:10px;background:#f2f9f5;font-size:16px;line-height:1.8"></div>
+  <div class="row" style="justify-content:space-between;margin-bottom:8px">
+    <div class="seg" id="l-view"><button data-v="inv" class="on">건별 목록</button><button data-v="client">거래처별 합계</button><button data-v="date">날짜별 합계</button><button data-v="month">월별 합계</button><button data-v="item">품목별 합계</button></div>
+    <button class="btn" id="l-xlsx">📥 엑셀로 저장</button>
+  </div>
+  <div class="tbl-wrap"><table class="t" id="l-table"></table></div>
+  <div class="row hide" id="l-invacts" style="margin-top:10px;justify-content:flex-end">
+    <button class="btn" id="l-printsel">선택한 것 한꺼번에 인쇄</button>
+  </div>
+</div>
+</section>
+
+<!-- 거래처 -->
+<section data-t="clients" class="hide">
+<div class="card">
+  <h2 id="c-title">거래처 등록</h2>
+  <div class="grid">
+    <label>상호 *<input id="c-name"></label>
+    <label>사업자등록번호<input id="c-bizno" placeholder="000-00-00000"></label>
+    <label>대표자<input id="c-ceo"></label>
+    <label>전화<input id="c-tel"></label>
+    <label style="grid-column:span 2">주소<input id="c-addr"></label>
+    <label>이월 미수 (받을 돈)<input id="c-opening" class="n" autocomplete="off" data-num="1" data-comma="1" placeholder="0"></label>
+    <label>이월 미지급 (줄 돈)<input id="c-openingBuy" class="n" autocomplete="off" data-num="1" data-comma="1" placeholder="0"></label>
+    <label>메모<input id="c-memo"></label>
+  </div>
+  <div class="row" style="margin-top:10px"><button class="btn" id="c-save">저장</button><button class="btn sub" id="c-cancel">취소</button></div>
+</div>
+<div class="card">
+  <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">거래처 목록</h2><div class="row"><input id="c-search" placeholder="🔍 거래처 검색 (상호·대표·전화)" style="width:240px" autocomplete="off"><label class="chk"><input type="checkbox" id="c-risk"> ⚠ 위험 거래처만</label><button class="btn sub sm" id="c-xlsx">📥 미수 현황 엑셀</button></div></div>
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>상호</th><th>전화</th><th class="n">미수 (받을 돈)</th><th class="n">미지급 (줄 돈)</th><th>마지막 입금</th><th>위험</th><th></th></tr></thead>
+    <tbody id="c-body"></tbody>
+  </table></div>
+  <div id="c-foot" class="muted" style="margin-top:8px"></div>
+</div>
+<div class="card hide" id="ledger"></div>
+</section>
+
+<!-- 품목 -->
+<section data-t="items" class="hide">
+<div class="card">
+  <h2>🔍 품목 검색 · 거래 기록</h2>
+  <div class="row" style="margin-bottom:8px"><input id="is-q" placeholder="예: 백오이 (일부만 쳐도 돼요)" style="width:260px" autocomplete="off">
+    <div class="seg" id="is-kind"><button data-k="all" class="on">매출 + 매입</button><button data-k="sale">매출만</button><button data-k="buy">매입만</button></div>
+    <select id="is-per" style="width:auto"><option value="90">최근 3개월</option><option value="365" selected>최근 1년</option><option value="0">전체 기간</option></select></div>
+  <div id="is-out" class="muted">품목 이름을 치면 그 글자가 들어간 품목과 거래 기록이 나와요.</div>
+</div>
+<div class="card">
+  <h2>품목 등록</h2>
+  <p class="muted" style="margin-top:0">명세서에 처음 쓴 품목은 자동으로 들어와요.</p>
+  <div class="grid">
+    <label>품목명 *<input id="i-name"></label>
+    <label>규격<input id="i-spec" placeholder="예: 50개, 10kg"></label>
+    <label>단위<select id="i-unit"><option value="">없음</option></select></label>
+    <label>기본 판매단가<input id="i-price" class="n" autocomplete="off" data-num="1" data-comma="1"></label>
+    <label>매입단가<input id="i-cost" class="n" autocomplete="off" data-num="1" data-comma="1"></label>
+    <label class="hide">소분 단위 1 (1 기본단위 = 몇?)<span class="row" style="gap:4px;flex-wrap:nowrap"><input id="i-sp1" class="n" autocomplete="off" data-num="1" placeholder="예: 10" style="width:70px"><select id="i-su1"></select></span></label>
+    <label class="hide">소분 단위 2<span class="row" style="gap:4px;flex-wrap:nowrap"><input id="i-sp2" class="n" autocomplete="off" data-num="1" placeholder="예: 50" style="width:70px"><select id="i-su2"></select></span></label>
+    <label class="chk hide" style="align-self:end"><input type="checkbox" id="i-track"> 재고 관리</label>
+  </div>
+  
+  <div class="row" style="margin-top:10px"><button class="btn" id="i-save">저장</button><button class="btn sub" id="i-cancel">취소</button><button class="btn del sm" id="i-delall" style="margin-left:auto">🗑 품목 전체 삭제</button></div>
+</div>
+<div class="card">
+  <div class="tbl-wrap"><table class="t">
+    <thead><tr><th>품목</th><th>규격</th><th>단위</th><th class="n">판매단가</th><th class="n">매입단가</th><th class="n">재고</th><th></th></tr></thead>
+    <tbody id="i-body"></tbody>
+  </table></div>
+</div>
+</section>
+
+<!-- 재고 -->
+<section data-t="stock" class="hide">
+<div class="card">
+  <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">📦 재고 현황</h2>
+    <div class="row"><input id="st-q" placeholder="🔍 품목 검색" style="width:180px" autocomplete="off"><label class="chk"><input type="checkbox" id="st-all"> 모든 품목 보기</label><button class="btn del sm" id="st-delall">🗑 재고 전체 삭제</button><button class="btn sub sm" id="st-xlsx">📥 엑셀</button></div></div>
+  <p class="muted" style="margin:0 0 8px">산 만큼 늘고, 판 만큼 줄어요. 명세서를 고치거나 지워도 자동으로 맞춰져요. <span id="st-since"></span></p>
+  <div class="tbl-wrap"><table class="t" id="st-table"></table></div>
+</div>
+<div class="card">
+  <div class="row" style="justify-content:space-between"><div><h2 style="margin:0 0 4px">📥 산 물건 적기</h2>
+  <p class="muted" style="margin:0">[매입 작성]에 적으면 재고가 늘어요.</p></div>
+  <button class="btn" onclick="goTab('buy')">매입 작성 열기</button></div>
+</div>
+<div class="card">
+  <h2>✏️ 재고 맞추기</h2>
+  <p class="muted" style="margin-top:0">처음 시작할 때 가게에 있는 물건(기초 재고)이나, 실제 개수랑 다를 때 여기서 맞춰요.</p>
+  <div class="row hide" style="margin-bottom:6px"><b style="width:60px">소분</b>
+    <input id="sp-from" placeholder="원래 품목" style="width:150px" autocomplete="off"><input id="sp-fq" class="n" data-num="1" placeholder="수량" style="width:70px" autocomplete="off"><select id="sp-fu" style="width:auto"></select>
+    <span>→</span><input id="sp-to" placeholder="새 품목" style="width:150px" autocomplete="off"><input id="sp-tq" class="n" data-num="1" placeholder="수량" style="width:70px" autocomplete="off"><select id="sp-tu" style="width:auto"></select>
+    <button class="btn" id="sp-save">소분하기</button></div>
+  <div class="row">
+    <input id="aj-name" placeholder="품목" style="width:150px" autocomplete="off"><input id="aj-qty" class="n" data-num="1" placeholder="+10 / -3" style="width:90px" autocomplete="off"><select id="aj-unit" style="width:auto"></select>
+    <select id="aj-why" style="width:auto"><option>기초 재고</option><option>실사 차이</option><option>폐기 · 손실</option><option>기타</option></select>
+    <button class="btn" id="aj-save">조정 저장</button></div>
+  <div class="row" style="margin-top:10px"><span>재고 계산 시작일</span><input type="date" id="st-start" style="width:auto"><span class="muted">이 날짜부터의 매입·판매만 재고에 반영해요. 시작일에 가진 물건은 '기초 재고'로 넣어주세요.</span></div>
+  <h3 style="font-size:15px;margin:14px 0 6px">최근 맞춘 기록</h3>
+  <div class="tbl-wrap"><table class="t" id="aj-table"></table></div>
+</div>
+</section>
+
+<!-- 설정 -->
+<section data-t="backup" class="hide">
+<div class="card">
+  <h2>💾 자료 백업</h2>
+  <div class="bkst" id="bk-status"></div>
+  <div class="row" style="margin-top:12px;gap:12px">
+    <button class="btn bkbig" id="bk-now">💻 이 컴퓨터에 지금 백업</button>
+    <button class="btn bkbig usb" id="bk-usb">🔌 USB · 외장하드에 백업</button>
+  </div>
+  <div id="bk-drvbox" class="hide" style="margin-top:14px">
+    <div class="muted" id="bk-drvmsg">USB · 외장하드 찾는 중...</div>
+    <div class="drv" id="bk-drives"></div>
+  </div>
+</div>
+<div class="card" id="bk-pccard">
+  <h2>💻 컴퓨터 백업 폴더</h2>
+  <p class="muted" style="margin-top:0">프로그램을 쓰는 날마다 하루 한 번 이 폴더에 자동으로 백업돼요. (최근 30일치 보관)</p>
+  <div class="row"><input id="bk-dir" readonly style="flex:1;min-width:260px;font-size:15px"><button class="btn sub" id="bk-pick">폴더 바꾸기</button><button class="btn sub" id="bk-dopen">폴더 열기</button></div>
+  <div class="muted" id="bk-files" style="margin-top:8px;line-height:1.7"></div>
+</div>
+<div class="card">
+  <h2>📂 백업으로 되살리기</h2>
+  <p class="muted" style="margin-top:0">컴퓨터를 바꿨거나 자료가 날아갔을 때, 백업 파일을 골라서 그때 상태로 되돌려요. (지금 자료는 혹시 몰라 따로 한 번 저장해둬요)</p>
+  <button class="btn sub" id="bk-restore">백업 파일 골라서 되살리기</button>
+</div>
+</section>
+
+<section data-t="settings" class="hide">
+<p class="muted" style="margin:0 0 10px">바꾸면 바로 저장돼요.</p>
+<div class="card">
+  <h2>🏪 우리 가게 정보 <span class="muted" style="font-weight:normal">(명세서에 찍혀요)</span></h2>
+  <div class="grid">
+    <label>상호 *<input id="s-name"></label>
+    <label>사업자등록번호<input id="s-bizno" placeholder="000-00-00000"></label>
+    <label>대표자<input id="s-ceo"></label>
+    <label>전화<input id="s-tel"></label>
+    <label style="grid-column:span 2">주소<input id="s-addr"></label>
+    <label>업태<input id="s-biz" placeholder="예: 도매"></label>
+    <label>종목<input id="s-kind" placeholder="예: 농산물"></label>
+    <label style="grid-column:span 2">입금계좌 (비워두면 안 나와요)<input id="s-bank" placeholder="예: 농협 000-0000-0000-00 홍길동"></label>
+  </div>
+  <button class="hide" id="s-save">저장</button>
+</div>
+<details class="card fold"><summary>🖨️ 인쇄</summary>
+  <div class="row" style="gap:18px">
+    <label class="chk">용지 <select id="o-paper" style="width:auto"><option value="a5">A5 용지 (1장씩 따로)</option><option value="a4">A4 용지 (반으로 잘라서)</option></select></label>
+    <label class="chk">몇 장 <select id="o-copies" style="width:auto"><option value="both">2장 (거래처용 + 내 가게용)</option><option value="client">거래처용 1장만</option><option value="mine">내 가게용 1장만</option></select></label>
+    <button class="btn sub" id="o-test">테스트 인쇄</button>
+  </div>
+  <div class="row" style="gap:18px;margin-top:12px">
+    <label class="chk"><input type="checkbox" id="o-bal"> 명세서에 잔액 표시</label>
+    <label class="chk"><input type="checkbox" id="o-mono"> 흑백 프린터 (선을 검정으로)</label>
+  </div>
+  <details style="margin-top:12px"><summary class="muted">인쇄가 밀리거나 잘릴 때만 (고급)</summary>
+  <div class="row" style="gap:18px;margin-top:10px">
+    <label class="chk">A5 넣는 방향 <select id="o-a5dir" style="width:auto"><option value="portrait">세로</option><option value="landscape">가로</option></select></label>
+    <label class="chk">여백 <select id="o-pmargin" style="width:auto"><option value="auto">좁게 4mm (크게 찍힘)</option><option value="wide">넓게 11mm (잘릴 때)</option><option value="none">없음</option></select></label>
+    <label class="chk">좌우 <input id="o-offx" class="n" autocomplete="off" data-num="1" style="width:60px">mm</label>
+    <label class="chk">상하 <input id="o-offy" class="n" autocomplete="off" data-num="1" style="width:60px">mm</label>
+    <label class="chk">크기 <input id="o-scale" class="n" autocomplete="off" data-num="1" style="width:60px">%</label>
+  </div>
+  <p class="muted" style="margin:8px 0 0">인쇄창 [기타 설정]에서 용지 A5, 여백 기본값, 머리글 및 바닥글 체크 해제</p></details>
+</details>
+<details class="card fold"><summary>⚠️ 미수 위험 기준</summary>
+  <div class="row" style="gap:12px"><label class="chk"><input type="checkbox" id="o-risk"> 빨간색으로 표시하기</label></div>
+  <div class="row" style="gap:12px;margin-top:10px"><label class="chk">잔액이 <input id="o-ramt" class="n" data-num="1" data-comma="1" autocomplete="off" style="width:130px"> 원 이상이거나</label><label class="chk">마지막 입금 후 <input id="o-rdays" class="n" data-num="1" autocomplete="off" style="width:70px"> 일이 넘으면</label></div>
+</details>
+<details class="card fold"><summary>📏 단위</summary>
+  <p class="muted" style="margin-top:0">수량 다음 Enter를 누르면 나오는 단위 목록이에요. 위에 있을수록 앞 번호(1, 2, 3…)가 돼요.</p>
+  <div id="u-list"></div>
+  <div class="row" style="margin-top:12px"><input id="u-new" placeholder="새 단위 (예: 상자)" style="width:200px" autocomplete="off" maxlength="6"><button class="btn" id="u-add">추가</button><button class="btn sub" id="u-reset">처음대로</button></div>
+</details>
+<details class="card fold"><summary>⚙️ 계산 · 입력</summary>
+  <div class="row" style="gap:18px">
+    <label class="chk">금액 계산 <select id="o-round" style="width:auto"><option value="none">원 단위 그대로</option><option value="floor10">10원 미만 버림</option></select></label>
+    <label class="chk"><input type="checkbox" id="o-showtax"> 부가세(과세) 명세서도 씀</label>
+    <label class="chk">기본 <select id="o-tax" style="width:auto"><option value="exempt">면세</option><option value="add10">과세 10%</option></select></label>
+  </div>
+  <div class="row" style="gap:18px;margin-top:12px">
+    <label class="chk"><input type="checkbox" id="o-net"> 거래처 잔액을 매출·매입 합쳐서 하나로 보기</label>
+    <label class="chk"><input type="checkbox" id="o-ime"> 입력은 한글로 시작</label>
+  </div>
+</details>
+<details class="card fold"><summary>🥒 품목 · 📦 재고</summary>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <label class="chk"><input type="checkbox" id="o-itemauto"> 명세서·매입에 새 품목을 쓰면 [품목]에 자동으로 저장 <span class="muted">(끄면 [품목]에서 직접 저장한 것만 남아요)</span></label>
+    <label class="chk"><input type="checkbox" id="o-specauto"> 품목을 저장할 때 규격도 같이 저장 <span class="muted">(끄면 명세서에 쓴 규격은 그 명세서에만 남고, [품목]에는 안 남아요)</span></label>
+    <label class="chk"><input type="checkbox" id="o-priceauto"> 품목을 저장할 때 단가 · 매입단가도 같이 저장 <span class="muted">(끄면 명세서 · 매입에 쓴 단가는 그 전표에만 남고, [품목]에는 안 남아요)</span></label>
+    <label class="chk"><input type="checkbox" id="o-stockon"> 위 메뉴에 [재고] 보이기 <span class="muted">(재고를 안 쓰면 꺼두세요)</span></label>
+    <label class="chk"><input type="checkbox" id="o-stockauto"> 매입 작성하면 재고에 자동으로 더하기 <span class="muted">(끄면 [재고]에서 직접 넣은 수량만 계산해요. 판 것은 그대로 빠져요)</span></label>
+  </div>
+</details>
+<details class="card fold"><summary>💾 백업 · 복원 <span class="muted" style="font-weight:normal">(위쪽 노란 [💾 백업] 버튼에서 더 쉽게 할 수 있어요)</span></summary>
+  <p class="muted" style="margin-top:0" id="bk-desc">자료는 이 컴퓨터의 크롬 안에 저장돼요. 크롬 기록(쿠키·사이트 데이터)을 지우거나 다른 컴퓨터로 옮기면 사라지니까, 가끔 백업 파일을 받아두세요.</p>
+  <div class="row">
+    <button class="btn" id="bk-down">백업 파일 받기</button>
+    <label class="btn sub" style="display:inline-block;flex-direction:row">백업 파일 불러오기<input type="file" id="bk-up" accept=".json,application/json" class="hide"></label>
+    <button class="btn sub hide" id="bk-open">자료 폴더 열기</button>
+    <button class="btn del" id="bk-reset">전체 자료 삭제</button>
+  </div>
+  <p class="muted" id="bk-info"></p>
+</details>
+<details class="card fold"><summary>📥 거래돌이 자료 가져오기</summary>
+  <p class="muted" style="margin-top:0">거래돌이 백업 파일(.mdb)을 고르면 거래처, 품목, 명세서, 입금 기록을 전부 옮겨와요. 다시 가져오면 새로 생긴 것만 더해져요.</p>
+  <button class="btn" id="gd-import">거래돌이 백업 파일 고르기</button>
+</details>
+<div class="card">
+  <div class="row" style="justify-content:space-between"><span>🔄 지금 버전 <b id="upd-ver"></b> <span class="muted">(켤 때 자동으로 새 버전을 확인해요)</span></span><button class="btn sub" id="upd-check">업데이트 확인</button></div>
+</div>
+</section>
+</main>
+
+<datalist id="dl-clients"></datalist>
+<datalist id="dl-items"></datalist>
+
+<div id="pv" class="hide">
+  <div class="pv-bar"><button class="btn" id="pv-print">이대로 인쇄</button><button class="btn sub" id="pv-close">닫기</button></div>
+  <div class="pv-in" id="pv-in"></div>
+</div>
+<div id="print"></div>
+<div id="win-dim" class="hide"></div>
+<div id="netbar" class="hide" style="position:fixed;left:0;right:0;top:0;z-index:9999;background:#c62828;color:#fff;padding:12px 16px;text-align:center;font-size:17px;line-height:1.6;box-shadow:0 3px 12px rgba(0,0,0,.3)"></div>
+<div id="toast"></div>
+
+<script src="js/supabase.js"></script>
+<script src="config.js?v=1794597455"></script>
+<script src="js/xlsx.mini.min.js"></script>
+<script src="js/mdb.min.js"></script>
+<script>
+/* ---------- 저장소 ---------- */
+const KEY='gm_v1';
+function blank(){return{company:{name:'',bizno:'',ceo:'',addr:'',biz:'',kind:'',tel:'',bank:''},opt:{showBal:true,mono:false,defTax:'exempt',rowsPerPage:10,paper:'a5',a5dir:'portrait',offX:0,offY:0,scale:100},clients:[],items:[],invoices:[],payments:[],adj:[]}}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.company){const b=blank();return Object.assign(b,s,{opt:Object.assign(b.opt,s.opt||{})})}}catch(e){}return blank()}
+const IS_APP=typeof NL_PATH!=='undefined'&&typeof Neutralino!=='undefined';
+const WEBCFG=window.OJP_WEB||null,IS_WEB=!IS_APP&&!!(WEBCFG&&WEBCFG.url&&WEBCFG.key);
+let DATA_DIR='',DOCS_DIR='',lastBk='',saving=Promise.resolve();
+const winPath=p=>String(p).replace(/\//g,'\\');
+/* ---------- 저장 ----------
+   Neutralino는 한 번에 32MB 넘는 메시지를 받으면 연결이 끊김 → 저장·종료·백업이 전부 멈춤.
+   그래서 큰 자료는 1.5M글자씩 나눠서 .tmp에 이어 쓰고, 크기 확인 뒤 진짜 파일로 바꿔치기한다. */
+const CHUNK=1500000;
+const tmo=(p,ms,what)=>Promise.race([p,new Promise((_,rj)=>setTimeout(()=>rj({code:'TIMEOUT',message:(what||'저장')+' 시간 초과'}),ms))]);
+async function writeBig(path,txt){const fs=Neutralino.filesystem,tmp=path+'.tmp';let i=0,first=true;
+  do{let j=Math.min(txt.length,i+CHUNK);if(j<txt.length){const c=txt.charCodeAt(j-1);if(c>=0xD800&&c<=0xDBFF)j--}
+    const part=txt.slice(i,j);await tmo(first?fs.writeFile(tmp,part):fs.appendFile(tmp,part),30000);first=false;i=j}while(i<txt.length);
+  const want=new TextEncoder().encode(txt).length,st=await tmo(fs.getStats(tmp),15000);
+  if(st.size!==want)throw{code:'SIZE',message:`저장 크기가 안 맞아요 (${st.size}/${want})`};
+  try{await tmo(fs.move(tmp,path),15000)}catch(e){if(e&&e.code==='TIMEOUT')throw e;try{await fs.remove(path)}catch(x){}await tmo(fs.move(tmp,path),15000)}
+  return path}
+let saveQ=false,saveRun=null,saveErrShown=false;
+function save(){IDX=null;BAL=null;RISKC=null;STKC=null;
+  if(IS_APP){saveQ=true;if(netDown){try{stashPut(JSON.stringify(S)).catch(()=>{})}catch(e){}return}if(!saveRun){saveRun=(async()=>{while(saveQ&&!netDown){saveQ=false;S.opt.savedAt=Date.now();const txt=JSON.stringify(S);
+      try{await writeBig(DATA_DIR+'/data.json',txt);saveErrShown=false;const d=today();if(lastBk!==d){await writeBig(DATA_DIR+'/backup/'+d+'.json',txt);lastBk=d;await autoPcBackup(txt)}}
+      catch(e){if(e&&e.code==='TIMEOUT'){goNetDown('저장이 끝나지 않아요');break}
+        if(!saveErrShown){saveErrShown=true;alert('자료 저장에 실패했어요.\n('+(e&&(e.message||e.code)||e)+')')}}}
+    saveRun=null})();saving=saveRun}return}
+  if(IS_WEB){webSave();return}
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){alert('저장에 실패했어요. 브라우저 저장공간을 확인해주세요.')}}
+
+/* ---------- 3. 연결 끊김 감지 + 임시 보관 ----------
+   끊기면 지금 자료를 이 창의 IndexedDB에 넣어두고, [다시 연결하기](새로고침) 후 되살려서 저장한다. */
+let netDown=false;
+const idb=(mode,fn)=>new Promise((res,rej)=>{const r=indexedDB.open('ojp',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onerror=()=>rej(r.error);
+  r.onsuccess=()=>{const t=r.result.transaction('kv',mode),st=t.objectStore('kv'),q=fn(st);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)}});
+const stashPut=txt=>idb('readwrite',st=>st.put(txt,'stash')),stashGet=()=>idb('readonly',st=>st.get('stash')),stashDel=()=>idb('readwrite',st=>st.delete('stash'));
+async function goNetDown(why){if(netDown)return;netDown=true;let kept=false;try{await stashPut(JSON.stringify(S));kept=true}catch(e){}
+  const bar=$('#netbar');bar.innerHTML=`<b>⚠ 저장이 안 되고 있어요</b> <span>(${esc(why||'프로그램 연결이 끊겼어요')})</span><br>${kept?'지금까지 입력한 자료는 임시로 지켜뒀어요. <b>[다시 연결하기]</b>를 누르면 저장돼요.':'아래 [백업 파일로 받기]로 자료부터 꼭 받아두세요.'}
+    <div class="row" style="margin-top:8px;justify-content:center"><button class="btn" id="nb-re">🔄 다시 연결하기</button><button class="btn sub" id="nb-dl">💾 백업 파일로 받기</button></div>`;
+  bar.classList.remove('hide');$('#nb-re').onclick=()=>location.reload();$('#nb-dl').onclick=()=>{bkDownload();toast('[다운로드] 폴더에 받았어요')}}
+async function stashCheck(){let t=null;try{t=await stashGet()}catch(e){return}if(!t)return;
+  try{const d=JSON.parse(t);if(d&&d.company&&(d.opt&&d.opt.savedAt||0)>=(S.opt.savedAt||0)){const b=blank();S=freezeAmts(Object.assign(b,d,{opt:Object.assign(b.opt,d.opt||{})}));IDX=null;save();await saving;
+    if(!netDown){await stashDel();toast('끊겼던 동안의 자료를 저장했어요 ✅')}return}}catch(e){}
+  try{await stashDel()}catch(e){}}
+
+/* ---------- 웹 버전: Supabase 로그인 + 서버 저장 ----------
+   자료 전체(S)를 gzip으로 묶어 storage 'stores' 버킷의 <uid>/data.json.gz 하나에 저장. 하루 한 번 <uid>/backup/날짜.json.gz.
+   이 컴퓨터(IndexedDB)에도 먼저 써두고(dirty 표시), 서버 저장이 끝나면 dirty 해제 → 인터넷이 끊겨도 안 날아감. */
+let SB=null,UID='',WEB_ID='',webDirty=false,webTimer=null,webBusy=null,webRemoteAt='',webLastBk='';
+const ID_DOMAIN='@ojeonpyo.app',idToEmail=id=>'u'+String(id).replace(/\D/g,'')+ID_DOMAIN;
+const gzBlob=async txt=>await new Response(new Blob([txt]).stream().pipeThrough(new CompressionStream('gzip'))).blob();
+const gunzipText=async blob=>await new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+function cloud(st,msg){const e=$('#cloud');if(!e)return;e.classList.remove('hide');e.dataset.st=st;e.textContent=msg}
+const ST=()=>SB.storage.from('stores');
+async function remoteStamp(){const{data,error}=await ST().list(UID,{search:'data.json.gz'});if(error)throw error;const f=(data||[]).find(x=>x.name==='data.json.gz');return f?String(f.updated_at||f.created_at||'x'):''}
+async function remoteText(){const{data,error}=await ST().download(UID+'/data.json.gz?t='+Date.now());if(error)throw error;return await gunzipText(data)}
+const cacheKey=()=>'web_'+UID,cacheSet=v=>idb('readwrite',st=>st.put(v,cacheKey())),cacheGet=()=>idb('readonly',st=>st.get(cacheKey()));
+function webSave(){webDirty=true;cloud('wait','☁ 저장 대기…');clearTimeout(webTimer);webTimer=setTimeout(webFlush,1500)}
+async function webFlush(){clearTimeout(webTimer);if(webBusy)return webBusy.then(()=>{if(webDirty)return webFlush()});
+  webBusy=(async()=>{while(webDirty){webDirty=false;S.opt.savedAt=Date.now();const txt=JSON.stringify(S),at=S.opt.savedAt;
+    try{await cacheSet({txt,dirty:true,at})}catch(e){}
+    if(!navigator.onLine){webDirty=true;cloud('err','⚠ 인터넷 끊김 · 이 컴퓨터에 임시 보관 중');break}
+    cloud('busy','☁ 저장 중…');
+    try{const now=await remoteStamp();
+      if(webRemoteAt&&now&&now!==webRemoteAt){const c=await ask('다른 컴퓨터(또는 다른 창)에서 자료가 바뀌었어요.<br>어느 쪽을 쓸까요?',[{label:'그쪽 자료 불러오기',val:'theirs'},{label:'지금 이 화면 자료로 저장',val:'mine',cls:'sub'}]);
+        if(c!=='mine'){await webPullReload();return}}
+      const blob=await gzBlob(txt);const r=await ST().upload(UID+'/data.json.gz',blob,{upsert:true,contentType:'application/gzip',cacheControl:'0'});if(r.error)throw r.error;
+      const d=today();if(webLastBk!==d){const r2=await ST().upload(`${UID}/backup/${d}.json.gz`,blob,{upsert:true,contentType:'application/gzip'});if(!r2.error){webLastBk=d;webPrune()}}
+      webRemoteAt=await remoteStamp();S.opt.bkLast=Date.now();
+      if(!webDirty){try{await cacheSet({txt,dirty:false,at})}catch(e){}}
+      cloud('ok','☁ 저장됨')}
+    catch(e){webDirty=true;cloud('err','⚠ 저장 안 됨 · 다시 시도 중');console.warn('save',e);setTimeout(()=>{if(webDirty)webFlush()},10000);break}}})();
+  try{await webBusy}finally{webBusy=null}}
+async function webPrune(){try{const{data}=await ST().list(UID+'/backup',{limit:1000});const f=(data||[]).map(x=>x.name).filter(n=>/^\d{4}-\d\d-\d\d\.json\.gz$/.test(n)).sort();
+  const old=f.slice(0,Math.max(0,f.length-30)).map(n=>`${UID}/backup/${n}`);if(old.length)await ST().remove(old)}catch(e){}}
+async function webPullReload(){const b=busy('다른 곳에서 바뀐 자료를 불러오는 중이에요…');try{const t=await remoteText();await cacheSet({txt:t,dirty:false,at:Date.now()})}catch(e){}location.reload()}
+function loginScreen(){return new Promise(res=>{const w=document.createElement('div');w.id='login';
+  w.innerHTML=`<div class="lbox"><img src="icons/appIcon.png" alt="" style="width:72px;height:72px;border-radius:16px"><h1>오늘전표</h1><p>휴대폰 번호랑 비밀번호로 들어와요</p>
+    <label for="lg-id">휴대폰 번호</label><input id="lg-id" inputmode="numeric" autocomplete="username" placeholder="01012345678">
+    <label for="lg-pw">비밀번호</label><input id="lg-pw" type="password" autocomplete="current-password" placeholder="6자리 이상">
+    <div id="lg-pw2box" class="hide"><label for="lg-pw2">비밀번호 한 번 더</label><input id="lg-pw2" type="password" autocomplete="new-password"></div>
+    <button id="lg-go">들어가기</button><button id="lg-sw" class="sub">처음이에요 · 가입하기</button><div class="err" id="lg-err"></div></div>`;
+  document.body.appendChild(w);let join=false;const E=t=>$('#lg-err').textContent=t;
+  const sw=()=>{join=!join;$('#lg-pw2box').classList.toggle('hide',!join);$('#lg-go').textContent=join?'가입하고 들어가기':'들어가기';$('#lg-sw').textContent=join?'이미 가입했어요 · 들어가기':'처음이에요 · 가입하기';E('')};
+  $('#lg-sw').onclick=sw;
+  const go=async()=>{const id=$('#lg-id').value.replace(/\D/g,''),pw=$('#lg-pw').value;if(!/^01\d{8,9}$/.test(id))return E('휴대폰 번호를 숫자로 넣어주세요. (예: 01012345678)');if(pw.length<6)return E('비밀번호는 6자리 이상이에요.');
+    if(join&&pw!==$('#lg-pw2').value)return E('비밀번호 두 번 넣은 게 서로 달라요.');
+    $('#lg-go').disabled=true;E('');$('#lg-go').textContent='잠깐만요…';
+    try{const r=join?await SB.auth.signUp({email:idToEmail(id),password:pw}):await SB.auth.signInWithPassword({email:idToEmail(id),password:pw});
+      if(r.error)throw r.error;if(!r.data.session)throw{message:'가입은 됐는데 바로 못 들어갔어요. 관리자에게 [메일 확인 끄기] 설정을 부탁하세요.'};w.remove();res(r.data.session)}
+    catch(e){const m=String(e&&e.message||e);E(/Invalid login/i.test(m)?'번호나 비밀번호가 틀렸어요.':/already registered|already exists/i.test(m)?'이미 가입된 번호예요. [들어가기]로 해주세요.':/fetch|network/i.test(m)?'인터넷 연결을 확인해주세요.':m)}
+    finally{const g=$('#lg-go');if(g){g.disabled=false;g.textContent=join?'가입하고 들어가기':'들어가기'}}};
+  $('#lg-go').onclick=go;w.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(e.target.id==='lg-id')$('#lg-pw').focus();else go()}});setTimeout(()=>$('#lg-id').focus(),50)})}
+function webFail(msg){const w=document.createElement('div');w.id='login';w.innerHTML=`<div class="lbox"><h1>😥</h1><p style="font-size:18px;color:#333">${msg}</p><button onclick="location.reload()">다시 시도</button></div>`;document.body.appendChild(w)}
+async function webInit(){SB=window.supabase.createClient(WEBCFG.url,WEBCFG.key,{auth:{persistSession:true,autoRefreshToken:true}});
+  let session=null;try{session=(await SB.auth.getSession()).data.session}catch(e){}
+  if(!session)session=await loginScreen();
+  UID=session.user.id;WEB_ID=String(session.user.email||'').replace(ID_DOMAIN,'').replace(/^u/,'');
+  const b=busy('자료를 불러오는 중이에요…');
+  try{let cache=null;try{cache=await cacheGet()}catch(e){}
+    webRemoteAt=await remoteStamp();const R=webRemoteAt?JSON.parse(await remoteText()):null;
+    let use=R,push=false;
+    if(cache&&cache.dirty&&(!R||cache.at>((R.opt&&R.opt.savedAt)||0))){use=JSON.parse(cache.txt);push=true}
+    else if(!R&&cache){use=JSON.parse(cache.txt);push=true}
+    if(use&&use.company){const bl=blank();S=freezeAmts(Object.assign(bl,use,{opt:Object.assign(bl.opt,use.opt||{})}))}
+    try{const{data}=await ST().list(UID+'/backup',{search:today()});if((data||[]).some(x=>x.name===today()+'.json.gz'))webLastBk=today()}catch(e){}
+    cloud('ok','☁ 저장됨');if(push){webDirty=true;webFlush()}}
+  catch(e){b.close();webFail('자료를 불러오지 못했어요.<br>인터넷 연결을 확인하고 [다시 시도]를 눌러주세요.<br><span style="font-size:13px;color:#999">'+esc(String(e&&e.message||e))+'</span>');throw e}
+  b.close();
+  $('#cloud').onclick=()=>{if(webDirty||$('#cloud').dataset.st==='err')webFlush();else toast('자료는 서버에 자동으로 저장돼요 ☁')};
+  window.addEventListener('beforeunload',e=>{if(webDirty||webBusy){webFlush();e.preventDefault();e.returnValue=''}});
+  document.addEventListener('visibilitychange',async()=>{if(document.hidden){if(webDirty)webFlush();return}
+    if(!webDirty&&!webBusy){try{const now=await remoteStamp();if(webRemoteAt&&now&&now!==webRemoteAt&&!isDirty(curTab)){toast('다른 곳에서 바뀐 자료를 불러올게요');webPullReload()}}catch(e){}}});
+  window.addEventListener('online',()=>{if(webDirty)webFlush()});window.addEventListener('offline',()=>cloud('err','⚠ 인터넷 끊김 · 이 컴퓨터에 임시 보관 중'))}
+async function webLogout(){if(!(await ask(`로그아웃할까요?<br><span class="muted">(${esc(WEB_ID)})</span>`,[{label:'로그아웃',val:1},{label:'취소',val:0,cls:'sub'}])))return;
+  if(webDirty||webBusy){const b=busy('저장하는 중이에요…');try{await webFlush()}catch(e){}b.close()}await SB.auth.signOut();location.reload()}
+
+async function appInit(){Neutralino.init();Neutralino.events.on('windowClose',onCloseReq);Neutralino.events.on('serverOffline',()=>goNetDown('프로그램 연결이 끊겼어요'));
+  try{DATA_DIR=(await Neutralino.os.getPath('data')).replace(/[\\/]+$/,'')+'/GeoraeStatement'}catch(e){DATA_DIR=NL_PATH+'/data'}
+  try{DOCS_DIR=(await Neutralino.os.getPath('documents')).replace(/[\\/]+$/,'')}catch(e){DOCS_DIR=''}
+  for(const d of [DATA_DIR,DATA_DIR+'/backup']){try{await Neutralino.filesystem.createDirectory(d)}catch(e){}}
+  try{const t=await Neutralino.filesystem.readFile(DATA_DIR+'/data.json');const d=JSON.parse(t);if(d&&d.company){const b=blank();S=freezeAmts(Object.assign(b,d,{opt:Object.assign(b.opt,d.opt||{})}));IDX=null}}catch(e){}
+  try{const st=await Neutralino.filesystem.readDirectory(DATA_DIR+'/backup');const f=st.map(x=>x.entry).filter(n=>/^\d{4}-\d\d-\d\d\.json$/.test(n)).sort();if(f.includes(today()+'.json'))lastBk=today();for(const old of f.slice(0,Math.max(0,f.length-10)))await Neutralino.filesystem.remove(DATA_DIR+'/backup/'+old)}catch(e){}}
+let S=freezeAmts(IS_WEB?blank():load());
+
+/* ---------- 도우미 ---------- */
+const $=s=>document.querySelector(s);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const num=v=>{const x=parseFloat(String(v??'').replace(/,/g,''));return isNaN(x)?0:x};
+const fmt=n=>(Math.round(num(n))||0).toLocaleString('ko-KR');
+const fq=q=>q===''||q==null?'':num(q).toLocaleString('ko-KR',{maximumFractionDigits:2});
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ymd=d=>{d=new Date(d);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const today=()=>ymd(new Date());
+const dateK=s=>{if(!s)return'';const[y,m,d]=s.split('-');return`${y}년 ${+m}월 ${+d}일`};
+function hangul(n){n=Math.round(n);if(n===0)return'영';const neg=n<0;n=Math.abs(n);const D=['','일','이','삼','사','오','육','칠','팔','구'],U=['','십','백','천'],B=['','만','억','조'];let s='',i=0;while(n>0){let ch=n%10000;n=Math.floor(n/10000);if(ch){let cs='';for(let j=0;j<4;j++){const g=ch%10;ch=Math.floor(ch/10);if(g)cs=D[g]+U[j]+cs}s=cs+B[i]+s}i++}return(neg?'마이너스 ':'')+s}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1800)}
+const clientOf=inv=>S.clients.find(c=>c.id===inv.clientId)||{name:inv.clientName||''};
+
+/* ---------- 계산 ---------- */
+function calcAmt(q,p){const v=num(q)*num(p);return S.opt.round==='floor10'?Math.sign(v)*Math.floor(Math.abs(v)/10+1e-9)*10:Math.round(v)}
+const rowAmt=r=>r.amt!==undefined&&r.amt!==null&&r.amt!==''?num(r.amt):calcAmt(r.qty,r.price);
+function freezeAmts(d){(d.invoices||[]).forEach(i=>(i.rows||[]).forEach(r=>{if(r.amt===undefined||r.amt===null||r.amt==='')r.amt=Math.round(num(r.qty)*num(r.price))}));return d}
+function invTotal(inv){let supply=0,tax=0;inv.rows.forEach(r=>{const a=rowAmt(r);supply+=a;if(inv.taxMode==='add10')tax+=Math.round(a*.1)});return{supply,tax,total:supply+tax}}
+const kindOf=x=>x&&x.kind==='buy'?'buy':'sale';
+const openingOf=(c,k)=>num(c&&(k==='buy'?c.openingBuy:c.opening));
+let IDX=null,BAL=null;
+function buildIdx(){IDX={};BAL={};const add=(k,e)=>(IDX[k]=IDX[k]||[]).push(e);
+  S.invoices.forEach(i=>add(i.clientId+'|'+kindOf(i),{type:'inv',date:i.date,t:i.created,ref:i,amt:invTotal(i).total,paid:num(i.paid)}));
+  S.payments.forEach(p=>add(p.clientId+'|'+kindOf(p),{type:'pay',date:p.date,t:p.created,ref:p,amt:0,paid:num(p.amount)}));
+  for(const k in IDX)IDX[k].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.t-b.t)}
+function entriesFor(cid,k='sale'){if(!IDX)buildIdx();return IDX[cid+'|'+k]||[]}
+function entriesForOld(cid,k='sale'){const e=[];S.invoices.filter(i=>i.clientId===cid&&kindOf(i)===k).forEach(i=>e.push({type:'inv',date:i.date,t:i.created,ref:i,amt:invTotal(i).total,paid:num(i.paid)}));S.payments.filter(p=>p.clientId===cid&&kindOf(p)===k).forEach(p=>e.push({type:'pay',date:p.date,t:p.created,ref:p,amt:0,paid:num(p.amount)}));return e.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.t-b.t)}
+const NET=()=>!!S.opt.netBal;
+function netEntries(cid){if(!IDX)buildIdx();const key='NET|'+cid;if(IDX[key])return IDX[key];
+  const a=(IDX[cid+'|sale']||[]).map(e=>Object.assign({sg:1},e)),b=(IDX[cid+'|buy']||[]).map(e=>Object.assign({sg:-1},e));
+  return IDX[key]=a.concat(b).sort((x,y)=>x.date<y.date?-1:x.date>y.date?1:x.t-y.t)}
+const netOpen=c=>openingOf(c,'sale')-openingOf(c,'buy');
+function netBal(cid){if(!IDX)buildIdx();const key='N|'+cid;if(key in BAL)return BAL[key];const c=S.clients.find(x=>x.id===cid);let b=netOpen(c);netEntries(cid).forEach(e=>b+=e.sg*(e.amt-e.paid));return BAL[key]=b}
+function balanceBefore(cid,date,created,exId,k='sale'){const c=S.clients.find(x=>x.id===cid);if(!c)return 0;
+  if(NET()){let b=netOpen(c);for(const e of netEntries(cid)){if(e.ref.id===exId)continue;if(e.date<date||(e.date===date&&e.t<created))b+=e.sg*(e.amt-e.paid)}return k==='buy'?-b:b}let b=openingOf(c,k);for(const e of entriesFor(cid,k)){if(e.ref.id===exId)continue;if(e.date<date||(e.date===date&&e.t<created))b+=e.amt-e.paid}return b}
+function curBalance(cid,k='sale'){if(NET()){const n=netBal(cid);return k==='sale'?Math.max(n,0):Math.max(-n,0)}if(!IDX)buildIdx();const key=cid+'|'+k;if(key in BAL)return BAL[key];const c=S.clients.find(x=>x.id===cid);let b=openingOf(c,k);entriesFor(cid,k).forEach(e=>b+=e.amt-e.paid);return BAL[key]=b}
+function nextNo(date,k='sale'){const p=(k==='buy'?'P':'')+date.replace(/-/g,'');let m=0;S.invoices.forEach(i=>{if(i.no&&i.no.startsWith(p+'-'))m=Math.max(m,parseInt(i.no.split('-')[1])||0)});return p+'-'+String(m+1).padStart(3,'0')}
+
+/* ---------- 인쇄 양식 ---------- */
+const fz=(t,mm)=>{let u=0;for(const ch of String(t||''))u+=/[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af\u4e00-\u9fff]/.test(ch)?4.5:/[\d,.]/.test(ch)?2.6:3;const room=mm-2.8;return u<=room?'':u*10.5/12.5<=room?' sm':' xs'};
+function half(inv,chunk,off,last,pages,p,label,color){
+  const buy=kindOf(inv)==='buy';let c=S.company,cl=clientOf(inv);if(buy)[c,cl]=[{bizno:cl.bizno||'',name:cl.name,ceo:cl.ceo||'',addr:cl.addr||'',biz:'',kind:'',tel:cl.tel||'',bank:''},{name:S.company.name,tel:S.company.tel}];
+  const T=invTotal(inv),tax=inv.taxMode==='add10',per=S.opt.rowsPerPage||10;
+  const prev=balanceBefore(inv.clientId,inv.date,inv.created,inv.id,kindOf(inv)),paid=num(inv.paid),bal=prev+T.total-paid;
+  let body='';
+  for(let k=0;k<per;k++){const r=chunk[k];
+    if(r){const a=rowAmt(r),q=`${fq(r.qty)}${r.unit&&r.qty!==''?' '+r.unit:''}`,pr=r.price===''?'':fmt(r.price),am=fmt(a),tx=tax?fmt(Math.round(a*.1)):'',W=tax?[70,17,21,21,26,21,16]:[76,19,23,23,29,22];
+      body+=`<tr><td class="c">${off+k+1}</td><td class="${fz(r.name,W[0])}">${esc(r.name)}</td><td class="c${fz(r.spec,W[1])}">${esc(r.spec)}</td><td class="n${fz(q,W[2])}">${esc(q)}</td><td class="n${fz(pr,W[3])}">${pr}</td><td class="n${fz(am,W[4])}">${am}</td>${tax?`<td class="n${fz(tx,W[5])}">${tx}</td>`:''}<td class="${fz(r.memo,W[tax?6:5])}">${esc(r.memo)}</td></tr>`}
+    else body+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td>${tax?'<td></td>':''}<td></td></tr>`}
+  const cols=tax?'<col style="width:8mm"><col><col style="width:17mm"><col style="width:21mm"><col style="width:21mm"><col style="width:26mm"><col style="width:21mm"><col style="width:16mm">'
+                 :'<col style="width:8mm"><col><col style="width:19mm"><col style="width:23mm"><col style="width:23mm"><col style="width:29mm"><col style="width:22mm">';
+  const ftz=(()=>{const L=[tax?'공급가액':'금액',fmt(T.supply)];if(tax)L.push('세액',fmt(T.tax));L.push('합계',fmt(T.total));if(S.opt.showBal)L.push('전잔액',fmt(prev),'입금',fmt(paid),'잔액',fmt(bal));L.push('인수자');
+    for(const f of [12,11,10,9,8]){let w=16;L.forEach((t,i)=>{w+=3+(i%2||i===L.length-1?String(t).length*2.3*f/12.5:String(t).length*4.1*f/12.5)});if(w<=198)return f}return 7.5})();
+  const ft=last?`<table class="ft" style="--fz:${ftz}pt"><tr><th>${tax?'공급가액':'금 액'}</th><td>${fmt(T.supply)}</td>${tax?`<th>세 액</th><td>${fmt(T.tax)}</td>`:''}<th>합 계</th><td><b>${fmt(T.total)}</b></td>${S.opt.showBal?`<th>${buy?'전미지급':'전잔액'}</th><td>${fmt(prev)}</td><th>${buy?'지 급':'입 금'}</th><td>${fmt(paid)}</td><th>${buy?'미지급':'잔 액'}</th><td><b>${fmt(bal)}</b></td>`:''}<th>인수자</th><td class="sign">(인)</td></tr></table>`:`<div class="cont">— 다음 장에 계속 —</div>`;
+  return `<div class="half ${color==='b'?'t':''}" style="--c:${color==='b'?'#1f4e9c':'#b3261e'}">
+  <div class="hd"><div class="no">No. ${esc(inv.no)}${pages>1?` (${p+1}/${pages})`:''}</div><div class="title">거래명세서</div><div class="lbl">${buy?'<b>[매입]</b> ':''}(${label})</div></div>
+  <div class="top2">
+    <div class="buyer"><div>${dateK(inv.date)}</div><div class="bn">${esc(cl.name)} <small>귀하</small></div>${cl.tel?`<div>☎ ${esc(cl.tel)}</div>`:''}<div style="color:var(--c)">아래와 같이 계산합니다.</div></div>
+    <table class="sup">
+      <tr><th rowspan="5" class="v">공<br>급<br>자</th><th>등록번호</th><td colspan="3" class="bz">${esc(c.bizno)}</td></tr>
+      <tr><th>상 호</th><td>${esc(c.name)}</td><th>성 명</th><td>${esc(c.ceo)}</td></tr>
+      <tr><th>주 소</th><td colspan="3">${esc(c.addr)}</td></tr>
+      <tr><th>업 태</th><td>${esc(c.biz)}</td><th>종 목</th><td>${esc(c.kind)}</td></tr>
+      <tr><th>전 화</th><td colspan="3">${esc(c.tel)}</td></tr>
+    </table>
+  </div>
+  <div class="tot" style="${(()=>{const n=hangul(T.total).length*5.2+fmt(T.total).length*2.6+52;return n>196?`font-size:${Math.max(8,Math.floor(11*196/n))}pt;--tb:${Math.max(9,Math.floor(14*196/n))}pt`:''})()}"><span class="k">합계금액</span><b>금 ${hangul(T.total)}원정</b><span>(₩${fmt(T.total)})</span>${tax?'<em>부가세 포함</em>':'<em>면세</em>'}</div>
+  <table class="it"><colgroup>${cols}</colgroup><thead><tr><th>No</th><th>품 목</th><th>규 격</th><th>수 량</th><th>단 가</th><th>${tax?'공급가액':'금 액'}</th>${tax?'<th>세 액</th>':''}<th>비 고</th></tr></thead><tbody>${body}</tbody></table>
+  ${ft}
+  ${c.bank&&last?`<div class="bank">입금계좌: ${esc(c.bank)}</div>`:''}
+</div>`}
+function sheetsHTML(inv){const per=S.opt.rowsPerPage||10,pages=Math.max(1,Math.ceil(inv.rows.length/per));let h='';for(let p=0;p<pages;p++){const ch=inv.rows.slice(p*per,(p+1)*per),last=p===pages-1;const top=half(inv,ch,p*per,last,pages,p,'공급받는자 보관용','b'),bot=half(inv,ch,p*per,last,pages,p,'공급자 보관용','r');const cp=S.opt.copies||'both',T1=cp!=='mine',T2=cp!=='client';
+    if(S.opt.paper==='a4')h+=fitPage(`<div class="sheetin">${T1&&T2?top+bot:T1?top:bot.replace('class="half"','class="half t"')}</div>`,210,296.5,210,297,false);
+    else h+=(T1?a5page(top.replace('class="half t"','class="half"')):'')+(T2?a5page(bot):'')}return h}
+const pMargin=()=>S.opt.pmargin==='none'?0:S.opt.pmargin==='wide'?11:4;
+/* 종이(papW×papH) 안쪽 여백을 뺀 영역에 내용(natW×natH)을 비율 유지해서 맞춤. rot=세로 종이에 90도 돌려 찍기 */
+function fitPage(inner,natW,natH,papW,papH,rot){const o=S.opt,m=pMargin(),w=papW-2*m,h=papH-2*m-0.6,us=(num(o.scale)||100)/100;
+  const cw=rot?natH:natW,ch=rot?natW:natH,sc=+(Math.min(w/cw,h/ch)*us).toFixed(4),ox=(w-cw*sc)/2+num(o.offX),oy=Math.max(0,(h-ch*sc)/2)+num(o.offY);
+  const L=(rot?ox+cw*sc:ox).toFixed(2),Tp=oy.toFixed(2);
+  return`<div class="pg" style="width:${w}mm;height:${h.toFixed(1)}mm;--m:${m}mm"><div class="pgpos" style="left:${L}mm;top:${Tp}mm;width:${(natW*sc).toFixed(2)}mm;height:${(natH*sc).toFixed(2)}mm;${rot?'transform:rotate(90deg)':''}"><div class="pgin" style="width:${natW}mm;height:${natH}mm;zoom:${sc}">${inner}</div></div></div>`}
+function a5page(inner){return S.opt.a5dir==='portrait'?fitPage(inner,210,147.5,148,210,true):fitPage(inner,210,147.5,210,148,false)}
+const setPage=(sz,m=0)=>{const st=document.createElement('style');st.id='pagesize';st.textContent=`@page{size:${sz};margin:${m}mm}`;$('#pagesize').replaceWith(st)};
+function printHTML(html,sz){setPage(sz||(S.opt.paper==='a4'?'A4 portrait':S.opt.a5dir==='portrait'?'A5 portrait':'A5 landscape'),sz?0:pMargin());const pr=$('#print');pr.className=S.opt.mono?'mono':'';pr.innerHTML=html;setTimeout(()=>window.print(),60)}
+const printInvs=arr=>printHTML(arr.map(sheetsHTML).join(''));
+let pvArr=[];
+function preview(arr){pvArr=arr;const pi=$('#pv-in');pi.className='pv-in'+(S.opt.mono?' mono':'');pi.innerHTML=arr.map(sheetsHTML).join('');$('#pv').classList.remove('hide')}
+$('#pv-close').onclick=()=>$('#pv').classList.add('hide');
+$('#pv-print').onclick=()=>{$('#pv').classList.add('hide');printInvs(pvArr)};
+
+/* 숫자 칸: 한/영 상태를 건드리지 않게 일반 글자 칸으로 두고, 숫자 말고는 지움 */
+function cleanNum(el){const v=el.value,c=v.replace(/[^\d.,\-]/g,'');if(c!==v){const p=el.selectionStart-(v.length-c.length);el.value=c;try{el.setSelectionRange(Math.max(0,p),Math.max(0,p))}catch(e){}}}
+const moneyTxt=v=>v===''||v==null||isNaN(num(v))?'':fmt(v);
+function commaFmt(el){const v=el.value,pos=el.selectionStart??v.length,digitsBefore=v.slice(0,pos).replace(/[^\d]/g,'').length,neg=v.trim().startsWith('-'),d=v.replace(/[^\d]/g,'');
+  const f=d?(neg?'-':'')+Number(d).toLocaleString('ko-KR'):(neg?'-':'');if(f===v)return;el.value=f;let c=0,i=0;while(i<f.length&&c<digitsBefore){if(/\d/.test(f[i]))c++;i++}try{el.setSelectionRange(i,i)}catch(e){}}
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.num&&!e.isComposing){cleanNum(t);if(t.dataset.comma)commaFmt(t)}},true);
+document.addEventListener('compositionend',e=>{const t=e.target;if(t.dataset&&t.dataset.num)setTimeout(()=>{cleanNum(t);t.dispatchEvent(new Event('input',{bubbles:true}))},0)},true);
+/* ---------- 한글 입력으로 시작 (윈도우 IME를 한글 모드로) ---------- */
+/* 켤 때 PowerShell 하나를 미리 띄워두고(코드 미리 준비), 필요할 때 한 줄만 보내서 바로 바꿈 */
+const IME_CS=`using System;using System.Text;using System.Runtime.InteropServices;
+public class GrImeK{
+ [StructLayout(LayoutKind.Sequential)] public struct RC{public int l,t,r,b;}
+ [StructLayout(LayoutKind.Sequential)] public struct GTI{public int cb;public int fl;public IntPtr a,f,c,m,s,k;public RC rc;}
+ [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+ [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr h,StringBuilder s,int n);
+ [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h,IntPtr p);
+ [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint t,ref GTI g);
+ [DllImport("imm32.dll")] static extern IntPtr ImmGetDefaultIMEWnd(IntPtr h);
+ [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr h,int m,IntPtr w,IntPtr l);
+ public static int Go(){IntPtr fg=GetForegroundWindow();var sb=new StringBuilder(256);GetWindowText(fg,sb,256);if(!sb.ToString().Contains("\\uAC70\\uB798\\uBA85\\uC138\\uC11C"))return -2;
+  GTI g=new GTI();g.cb=Marshal.SizeOf(g);IntPtr f=fg;if(GetGUIThreadInfo(GetWindowThreadProcessId(fg,IntPtr.Zero),ref g)&&g.f!=IntPtr.Zero)f=g.f;
+  IntPtr ime=ImmGetDefaultIMEWnd(f);if(ime==IntPtr.Zero)return -1;
+  SendMessage(ime,0x283,(IntPtr)6,(IntPtr)1);SendMessage(ime,0x283,(IntPtr)2,(IntPtr)1);return (int)SendMessage(ime,0x283,(IntPtr)1,IntPtr.Zero);}
+}`;
+const imeOn=()=>IS_APP&&S.opt.imeKo!==false;
+const IME_ADD=()=>`Add-Type -TypeDefinition ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${btoa(IME_CS)}')))`;
+let imeProc=null,imeOut=0,imeEv=false;
+function imeExec(){try{const ps=IME_ADD()+'\n[GrImeK]::Go()';const u=new Uint8Array(ps.length*2);for(let i=0;i<ps.length;i++){const c=ps.charCodeAt(i);u[i*2]=c&255;u[i*2+1]=c>>8}let bin='';u.forEach(b=>bin+=String.fromCharCode(b));
+  Neutralino.os.execCommand(`powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand ${btoa(bin)}`,{background:true})}catch(e){}}
+async function imeInit(){if(!imeOn()||imeProc)return;try{if(!imeEv){imeEv=true;Neutralino.events.on('spawnedProcess',e=>{const d=e.detail||{};if(imeProc&&d.id===imeProc.id&&d.action==='stdOut')imeOut=Date.now()})}const p=await Neutralino.os.spawnProcess('powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command -');
+  await Neutralino.os.updateSpawnedProcess(p.id,'stdIn',IME_ADD()+'\n');imeProc=p}catch(e){imeProc=null}}
+function imeHangul(){if(!imeOn())return;if(imeProc){const t0=Date.now(),first=!imeOut;Neutralino.os.updateSpawnedProcess(imeProc.id,'stdIn','[GrImeK]::Go()\n').catch(()=>{imeProc=null;imeExec()});
+  setTimeout(()=>{if(imeProc&&imeOut<t0){imeStop();imeExec()}},first?6000:2500);return}imeExec()}
+function imeStop(){try{if(imeProc)Neutralino.os.updateSpawnedProcess(imeProc.id,'exit')}catch(e){}imeProc=null}
+const imeDone={};
+document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
+
+/* ---------- 탭 ---------- */
+const APP_VER='2.3.3';
+const NOTICES=[
+ {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정] → 백업 → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정] → 백업의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.3.3',date:'2026-11-14',title:'큰 자료 저장 · 품목 저장 설정',items:['자료가 많아도 저장 · 백업 · 끄기가 멈추지 않게 나눠서 저장해요.','[설정] → [품목 · 재고]에서 규격 · 단가 · 매입단가를 품목에 같이 저장할지 고를 수 있어요.','백업 파일 크기를 30%쯤 줄였어요.','혹시 저장이 안 되면 위에 빨간 알림이 뜨고, [다시 연결하기]로 자료를 지켜요.']},
+ {ver:'2.3.2',date:'2026-11-11',title:'저장 · 종료 멈춤 고침',items:['새로 깐 컴퓨터에서 저장 · 종료 · 백업 버튼이 멈추던 문제를 고쳤어요.','(바탕화면 바로가기를 만드는 동안 프로그램 전체가 기다리던 게 원인이었어요)']},
+ {ver:'2.3.1',date:'2026-11-09',title:'월 총합 · 품목/재고 설정',items:['[거래 내역]에서 거래처를 고르면 그 달(기간) 총합이 크게 나와요. 지난 잔액 + 이번 달 매출 − 입금 = 남은 잔액.','[월별 합계] 보기 버튼이 생겼어요.','[설정] → [품목 · 재고]에서 새 품목 자동 저장을 켜고 끌 수 있어요. (기본은 켜짐)','[재고] 메뉴를 숨길 수 있고, 매입하면 재고에 자동으로 더할지도 고를 수 있어요.']},
+ {ver:'2.3.0',date:'2026-11-06',title:'이름이 "오늘전표"로 바뀌었어요',items:['프로그램 이름을 "오늘전표"로 바꾸고 새 아이콘을 달았어요.','바탕화면에 새 아이콘의 "오늘전표" 바로가기가 생겨요. 예전 바로가기가 있으면 그걸 바꿔줘요.','자료 · 백업 · 사용법은 전부 그대로예요.']},
+ {ver:'2.2.7',date:'2026-11-06',title:'백업 버튼',items:['메뉴 맨 오른쪽에 노란 [💾 백업] 버튼이 생겼어요.','프로그램을 쓰는 날마다 [문서] → [거래명세서 백업] 폴더에 자동으로 백업돼요. (최근 30일치, 폴더는 바꿀 수 있어요)','[USB · 외장하드에 백업]을 누르면 꽂혀 있는 USB · 외장하드를 찾아서 버튼으로 보여줘요. 누르기만 하면 저장돼요.','USB 백업을 일주일 넘게 안 하면 백업 버튼에 빨간 점이 떠요.','[백업 파일 골라서 되살리기]로 백업한 때로 되돌릴 수 있어요.']},
+ {ver:'2.2.6',date:'2026-11-05',title:'글씨 크게 · 전체 삭제',items:['거래명세서 인쇄가 위아래 양옆으로 약 1cm씩 더 크게 나와요.','인쇄 글씨를 전부 키우고 굵게 했어요. 숫자가 길면 칸에 맞게 알아서 조금 줄어요.','혹시 가장자리가 잘리면 [설정] → 여백을 "넓게 11mm"로 바꿔주세요.','[품목]에 "품목 전체 삭제", [재고]에 "재고 전체 삭제" 버튼을 만들었어요. (명세서 · 매입 기록은 그대로 남아요)','거래처 장부에서 입금 잡을 때 커서가 바로 금액 칸에 가 있어요.']},
+ {ver:'2.2.5',date:'2026-11-02',title:'단위 관리',items:['단위에 봉지 · 관을 추가했어요.','[설정] → 단위에서 단위를 추가 · 삭제하고, ▲▼로 순서를 바꿀 수 있어요. (위에 있을수록 앞 번호)']},
+ {ver:'2.2.4',date:'2026-11-02',title:'단가 공란 · 원장 최근 순',items:['명세서 작성에서 품목을 골라도 단가는 비워둬요. (그날 시세대로 직접 넣기)','거래처 원장(입금 잡는 화면)에서 최근 기록이 맨 위에 나와요. (인쇄는 날짜 순 그대로)']},
+ {ver:'2.2.3',date:'2026-11-02',title:'금액 칸 콤마',items:['단가 · 입금액 · 이월 미수 · 매입단가 등 금액을 넣는 칸에 모두 천 단위 콤마가 찍혀요. (미수 위험 기준 포함)']},
+ {ver:'2.2.1',date:'2026-11-02',title:'초성 검색',items:['거래처 · 품목을 입력할 때 초성만 쳐도 목록이 떠요. (예: ㅂㅇ → 백오이, ㄷㅈㅁㅌ → 대전마트, 백ㅇ처럼 섞어도 돼요)','거래 내역 · 거래처 · 품목 · 재고 검색칸도 초성으로 찾을 수 있어요.']},
+ {ver:'2.2',date:'2026-11-01',title:'더 크고 단순하게',items:['글자와 버튼을 키우고, 메뉴 이름을 짧게 바꿨어요. (매입 작성 · 거래처 · 설정)','명세서 작성의 [매입으로 기록] 체크는 없앴어요. 산 물건은 [매입 작성] 메뉴에서 적으면 돼요.','재고에서 소분은 빼고 [재고 맞추기]만 남겼어요.','설정은 묶음별로 접어두고, 바꾸면 바로 저장되게 했어요. 부가세 칸은 쓰는 분만 켜면 보여요.']},
+ {ver:'2.1.1',date:'2026-10-31',title:'매입 입력 화면 통일',items:['위쪽 메뉴와 첫 화면에 [매입 입력]이 생겼어요. 명세서 작성이랑 똑같은 화면(여러 줄 · 방향키 · 단위 선택)으로 매입을 넣을 수 있어요.','[재고] 창의 [매입 입력 열기]를 눌러도 같은 화면이 열려요.']},
+ {ver:'2.1',date:'2026-10-31',title:'품목 검색 · 미수 위험 · 재고',items:['[품목 · 검색]에서 \'백오이\'처럼 치면 그 글자가 들어간 품목과 지난 거래 기록(날짜 · 거래처 · 수량 · 단가)이 다 나와요. 최근 판매가 · 매입가도 같이 보여요.','미수 위험 표시: 잔액이 기준 이상이거나 마지막 입금 후 오래된 거래처를 빨간색으로 보여줘요. 기준 금액 · 기간은 [설정]에서 정할 수 있어요.','새 [재고] 메뉴: 매입 입력(입고, 매입단가 포함) · 재고 현황 · 소분 · 재고 조정. 명세서를 쓰거나 고치거나 지우면 재고도 자동으로 맞춰져요.','[품목]에서 소분 단위(예: 1박스 = 10Kg)를 정하면, Kg로 팔아도 재고에서 박스로 바꿔서 빠져요.']},
+ {ver:'2.0.3',date:'2026-10-31',title:'한글 전환 빠르게',items:['한글로 바뀌기까지 살짝 늦던 걸 빠르게 고쳤어요. 프로그램을 켤 때 미리 준비해두고, 켜자마자 한글로 맞춰요.']},
+ {ver:'2.0.2',date:'2026-10-31',title:'한글로 시작',items:['명세서 작성 창을 열면 거래처 칸에 바로 커서가 가고, 입력이 한글로 시작해요. (다른 창도 처음 입력할 때 한글로 맞춰요)','영어가 필요하면 한/영 키로 바꾸면 되고, 바꾼 건 창을 닫을 때까지 그대로예요.','[설정] → \'입력 칸은 한글로 시작\'에서 끌 수 있어요.','업데이트를 올리자마자 바로 확인되게 고쳤어요.']},
+ {ver:'2.0.1',date:'2026-10-30',title:'한글 입력 · 단위 망',items:['명세서 작성 중에 입력이 자꾸 영어로 바뀌던 문제를 고쳤어요. 이제 한/영은 키보드에서 바꾼 대로 유지돼요.','숫자 칸(수량 · 단가 · 입금액 등)은 한글 상태에서도 숫자가 그대로 들어가요.','단위에 \'망\'을 추가했어요. (수량 치고 Enter → 6번)']},
+ {ver:'2.0',date:'2026-10-29',title:'자동 업데이트',items:['이제 프로그램을 켤 때 새 버전이 있으면 알려주고, [지금 업데이트]만 누르면 알아서 바뀌어요. 더 이상 파일을 새로 받을 필요가 없어요.','[설정 · 백업] → [지금 업데이트 확인]으로 직접 확인할 수도 있어요.','윈도우 백신이 프로그램을 잘못 지우는 일이 줄도록 프로그램 파일 구성을 바꿨어요.']},
+ {ver:'1.9',date:'2026-10-29',title:'거래돌이 자료 가져오기',items:['[설정 · 백업] → [거래돌이 백업 파일 고르기]로 거래돌이 백업(.mdb)의 거래처, 품목, 매출 · 매입, 입금 · 지급 기록을 한 번에 옮겨올 수 있어요.','같은 파일을 다시 가져오면 겹치지 않고 새로 생긴 것만 더해져요.','[설정] → 금액 계산에서 \'10원 미만 버림\'을 고를 수 있어요. (거래돌이 자료를 가져오면 자동으로 맞춰져요)','[설정] → \'매출·매입 잔액을 하나로 합쳐서 계산\'을 켜면 거래돌이처럼 거래처마다 잔액 하나로 보여요. (거래돌이 자료를 가져오면 자동으로 켜져요)','자료가 많아도 빠르게 돌아가게 계산 방식을 손봤어요.']},
+ {ver:'1.8.2',date:'2026-10-28',title:'A5 인쇄 잘림 수정',items:['인쇄창 여백 때문에 명세서 아래쪽(오른쪽 칸)이 잘리던 문제를 고쳤어요. 이제 종이 안쪽 10mm 여백 안에 딱 맞게 줄여서 찍혀요.','[설정 · 백업] → 인쇄 여백에서 \'여백 없이 꽉 차게\'도 고를 수 있어요. (이때는 인쇄창 여백을 \'없음\'으로)']},
+ {ver:'1.8.1',date:'2026-10-28',title:'인쇄 오류 수정',items:['창을 연 상태에서 인쇄하면 빈 종이가 나오던 문제를 고쳤어요.']},
+ {ver:'1.8',date:'2026-10-28',title:'인쇄 매수 선택',items:['[설정 · 백업] → 인쇄 매수에서 2장(거래처용 + 내 가게용) / 거래처용 1장만 / 내 가게용 1장만 을 고를 수 있어요.']},
+ {ver:'1.7',date:'2026-10-28',title:'매입 기록 · 매출/매입 따로 보기',items:['명세서 작성에서 [매입으로 기록]을 체크하면 내가 산 물건을 기록할 수 있어요. (번호는 P로 시작)','거래 내역에서 매출 + 매입 / 매출만 / 매입만 으로 골라 볼 수 있고, 엑셀에도 그대로 저장돼요.','거래처마다 미수(받을 돈)와 미지급(줄 돈)이 따로 계산되고, 원장에서 입금 · 지급을 등록할 수 있어요.','첫 화면에 이번 달 매입, 전체 미지급이 추가됐어요.']},
+ {ver:'1.6',date:'2026-10-28',title:'첫 화면 · 창으로 열기',items:['첫 화면에 공지사항 · 업데이트 내역과 오늘 / 이번 달 요약을 넣었어요.','메뉴를 누르면 프로그램 안에서 창이 열리고, ✕ 또는 Esc로 닫을 수 있어요.','창을 닫을 때 입력하던 내용이 있으면 저장할지 물어봐요.']},
+ {ver:'1.5',date:'2026-10-28',title:'방향키 이동 · 끄기 확인',items:['명세서 작성에서 방향키(← → ↑ ↓)로 칸을 옮길 수 있어요.','품목 · 거래처는 글자를 칠 때만 목록이 뜨고, 품목 목록에 규격 · 단위 · 단가가 같이 보여요.','프로그램 X를 누르면 끌지 물어보고, 저장 안 한 내용이 있으면 저장할지 물어봐요.','메뉴를 옮길 때 저장 안 한 내용이 있으면 저장할지 물어봐요.']},
+ {ver:'1.4',date:'2026-10-27',title:'A5 인쇄 개선',items:['A5 용지를 세로로 넣는 프린터에 맞게 출력하도록 바꿨어요.','[설정 · 백업]에 위치 보정(좌우 · 상하 mm), 크기(%), 테스트 인쇄를 추가했어요.']},
+ {ver:'1.3',date:'2026-10-27',title:'단위 선택',items:['수량을 치고 Enter를 누르면 단위(박스 · Kg · g · 개 · 단)를 고를 수 있어요.','한 번 쓴 단위는 품목에 기억돼요.']},
+ {ver:'1.2',date:'2026-10-27',title:'검색 · 엑셀 저장',items:['거래 내역을 일별 · 월별 · 연별 · 기간으로 검색할 수 있어요.','거래처 · 품목 검색, 거래처별 · 날짜별 · 품목별 합계 보기를 추가했어요.','검색 결과와 거래처 미수 현황을 엑셀로 저장할 수 있어요.']},
+ {ver:'1.1',date:'2026-10-27',title:'A5 용지 인쇄',items:['A5 용지에 거래처용 1장, 내 가게용 1장씩 따로 인쇄돼요.']},
+ {ver:'1.0',date:'2026-10-27',title:'첫 버전',items:['거래명세서 작성 · 인쇄, 거래처 · 미수 관리, 품목 관리, 자료 백업.']}];
+const WTITLE={backup:'💾 백업',write:'📝 명세서 작성',list:'📋 거래 내역',clients:'🏪 거래처',items:'🥒 품목',stock:'📦 재고',settings:'⚙️ 설정'};
+document.querySelectorAll('section[data-t]').forEach(sec=>{const t=sec.dataset.t;if(t==='home')return;sec.classList.add('win');
+  const body=document.createElement('div');body.className='win-body';while(sec.firstChild)body.appendChild(sec.firstChild);
+  const bar=document.createElement('div');bar.className='win-bar';bar.innerHTML=`<span class="win-title">${WTITLE[t]}</span><button class="win-x" title="닫기 (Esc)">✕</button>`;
+  bar.querySelector('.win-x').onclick=()=>closeWin();sec.append(bar,body);body.addEventListener('scroll',()=>{acClose();closeUnit()})});
+function winTop(){const b=document.querySelector(`section[data-t="${curTab}"] .win-body`);if(b)b.scrollTop=0;else window.scrollTo(0,0)}
+const setHH=()=>document.documentElement.style.setProperty('--hh',document.querySelector('header').offsetHeight+'px');
+window.addEventListener('resize',setHH);setHH();
+function renderHome(){bkDue();applyStockVis();const t=today(),m=t.slice(0,7);let tc=0,ts=0,tp=0,ms=0,mb=0,mc=0,mbc=0;
+  S.invoices.forEach(i=>{const T=invTotal(i).total,b=kindOf(i)==='buy';if(!b&&i.date===t){tc++;ts+=T;tp+=num(i.paid)}if(i.date.startsWith(m)){if(b){mbc++;mb+=T}else{mc++;ms+=T}}});
+  S.payments.forEach(p=>{if(kindOf(p)==='sale'&&p.date===t)tp+=num(p.amount)});
+  let mis=0,misN=0,pay=0,payN=0;S.clients.forEach(c=>{const b=curBalance(c.id),q=curBalance(c.id,'buy');if(Math.round(b)>0){mis+=b;misN++}if(Math.round(q)>0){pay+=q;payN++}});
+  $('#h-hello').textContent=`${S.company.name||'우리 가게'} · ${dateK(t)}`;
+  $('#h-stats').innerHTML=`<div class="stat"><div class="k">오늘 매출</div><div class="v">${fmt(ts)}</div><div class="s">${tc}건 · 원</div></div>
+  <div class="stat"><div class="k">오늘 받은 돈</div><div class="v">${fmt(tp)}</div><div class="s">원</div></div>
+  <div class="stat"><div class="k">이번 달 매출</div><div class="v">${fmt(ms)}</div><div class="s">${mc}건 · 원</div></div>
+  <div class="stat"><div class="k">이번 달 매입</div><div class="v">${fmt(mb)}</div><div class="s">${mbc}건 · 원</div></div>
+  <div class="stat"><div class="k">전체 미수 (받을 돈)</div><div class="v">${fmt(mis)}</div><div class="s">${misN}곳 · 원</div></div>
+  <div class="stat"><div class="k">전체 미지급 (줄 돈)</div><div class="v">${fmt(pay)}</div><div class="s">${payN}곳 · 원</div></div>${S.opt.riskOn!==false?(()=>{const rl=riskList();return`<div class="stat${rl.length?' warn':''}" id="h-risk"><div class="k">⚠ 미수 위험 거래처</div><div class="v">${rl.length}곳</div><div class="s">${rl.length?esc(rl.slice(0,2).map(x=>x.c.name).join(', '))+(rl.length>2?' 외':''):'없음'}</div></div>`})():''}`;
+  const hr=$('#h-risk');if(hr)hr.onclick=async()=>{await goTab('clients');if(curTab==='clients'){$('#c-risk').checked=true;renderClients()}};
+  $('#h-notice').innerHTML=NOTICES.map((n,k)=>`<details${n.pin||n.ver===APP_VER?' open':''}><summary>${n.pin?'<span class="tag pin">공지</span>':`<span class="tag${n.ver===APP_VER?' new':''}">${n.ver===APP_VER?'NEW ':''}v${n.ver}</span>`}<span class="t">${esc(n.title)}</span><span class="d">${n.date}</span></summary><ul>${n.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>`).join('')}
+let curTab='home';
+function tab(name){const prevTab=curTab;curTab=name;acClose();closeUnit();if(name==='home')for(const k in imeDone)delete imeDone[k];document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));document.querySelectorAll('section[data-t]').forEach(s=>s.classList.toggle('hide',s.dataset.t!==name&&s.dataset.t!=='home'));$('#win-dim').classList.toggle('hide',name==='home');if(name==='home')renderHome();winTop();({list:()=>{fillYears();renderList()},clients:renderClients,items:()=>{renderItems();renderItemSearch();setTimeout(()=>$('#is-q').focus(),30)},stock:renderStock,settings:renderSettings,backup:renderBackup}[name]||(()=>{}))();winTop()}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>goTab(b.dataset.t));
+/* ---------- 확인창 · 미저장 확인 ---------- */
+function ask(msg,btns){return new Promise(res=>{const m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<div class="box"><div class="msg">${msg}</div><div class="btns">${btns.map((b,k)=>`<button class="btn ${b.cls||''}" data-k="${k}">${b.label}</button>`).join('')}</div></div>`;
+  const done=v=>{document.removeEventListener('keydown',kd,true);m.remove();res(v)};
+  const kd=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();done(btns[btns.length-1].val)}};
+  document.addEventListener('keydown',kd,true);m.onclick=e=>{const b=e.target.closest('button');if(b)done(btns[+b.dataset.k].val)};
+  document.body.appendChild(m);m.querySelector('button').focus()})}
+const TABNAME={write:'명세서 작성',clients:'거래처',items:'품목',settings:'설정'};
+function formSig(t){const v=id=>{const el=$(id);return el?(el.type==='checkbox'?el.checked:el.value):''};
+  if(t==='write')return JSON.stringify([v('#f-client'),v('#f-tax'),v('#f-paid'),readRows()]);
+  if(t==='clients')return JSON.stringify(CF.map(f=>v('#c-'+f)));
+  if(t==='items')return JSON.stringify([...IF.map(f=>v('#i-'+f)),v('#i-track')]);
+  if(t==='settings')return JSON.stringify([...SF.map(f=>v('#s-'+f)),...['#o-paper','#o-pmargin','#o-copies','#o-a5dir','#o-offx','#o-offy','#o-scale','#o-bal','#o-mono','#o-tax','#o-round','#o-net','#o-ime','#o-itemauto','#o-specauto','#o-priceauto','#o-stockon','#o-stockauto','#o-showtax','#o-risk','#o-ramt','#o-rdays'].map(v)]);
+  return ''}
+const base={};
+const markClean=t=>{base[t]=formSig(t)};
+const isDirty=t=>t in base&&formSig(t)!==base[t];
+const SAVERS={write:()=>saveInv(false),clients:()=>saveClient(),items:()=>saveItem(),settings:()=>saveSettings()};
+const DISCARD={write:()=>newForm(),clients:()=>clearC(),items:()=>clearI(),settings:()=>renderSettings()};
+async function resolveDirty(t,how){if(!isDirty(t))return true;
+  const v=await ask(`<b>[${TABNAME[t]}]</b>에 입력하던 내용이 있어요.<br>저장할까요?`,[{label:'저장하고 '+how,val:'save'},{label:'저장 안 하고 '+how,val:'discard',cls:'sub'},{label:'취소',val:'cancel',cls:'sub'}]);
+  if(v==='save')return !!SAVERS[t]();
+  if(v==='discard'){DISCARD[t]();return true}
+  return false}
+let asking=false;
+async function closeWin(){if(curTab==='home'||asking)return;asking=true;try{if(await resolveDirty(curTab,'닫기'))tab('home')}finally{asking=false}}
+document.addEventListener('keydown',e=>{if(e.key!=='Escape'||e.defaultPrevented)return;if(!$('#pv').classList.contains('hide')){$('#pv').classList.add('hide');return}if(ac||unitPop||document.querySelector('.modal'))return;if(curTab!=='home'){e.preventDefault();closeWin()}});
+async function goTab(n){const mode=n==='buy'?'buy':n==='write'?'sale':null,t=n==='buy'?'write':n;if(asking)return;
+  if(t===curTab){if(mode&&!editing&&$('#f-buy').checked!==(mode==='buy')){$('#f-buy').checked=mode==='buy';setBuyUI();setTimeout(()=>$('#f-client').focus(),30)}return}
+  asking=true;try{if(await resolveDirty(curTab,'이동')){tab(t);if(mode&&!editing){$('#f-buy').checked=mode==='buy';setBuyUI();markClean('write')}if(t==='write'&&!editing){const f=$('#f-client');setTimeout(()=>{f.focus()},30)}}}finally{asking=false}}
+let closing=false;
+async function onCloseReq(){if(closing||asking)return;asking=true;
+  try{let ok;if(isDirty(curTab))ok=await resolveDirty(curTab,'끄기');
+    else ok=(await ask('프로그램을 끌까요?',[{label:'끄기',val:'ok'},{label:'취소',val:'cancel',cls:'sub'}]))==='ok';
+    if(!ok)return;closing=true;let b=saveRun?busy('저장하는 중이에요… 잠깐만요'):null;let done=false;try{await Promise.race([saving.then(()=>done=true),new Promise(r=>setTimeout(r,60000))])}catch(e){}if(b)b.close();
+    if(!done||netDown){closing=false;if((await ask('저장이 아직 안 끝났어요.<br>지금 끄면 마지막에 입력한 게 빠질 수 있어요.',[{label:'기다릴게요',val:'wait'},{label:'그래도 끄기',val:'off',cls:'del'}]))!=='off')return;closing=true}
+    imeStop();Neutralino.app.exit()}finally{asking=false}}
+window.addEventListener('beforeunload',e=>{if(!IS_APP&&isDirty(curTab)){e.preventDefault();e.returnValue=''}});
+function refreshLists(){$('#dl-clients').innerHTML=S.clients.map(c=>`<option value="${esc(c.name)}">`).join('');$('#dl-items').innerHTML=S.items.map(i=>`<option value="${esc(i.name)}">${esc(i.spec||'')}</option>`).join('');$('#need-setup').classList.toggle('hide',!!S.company.name)}
+
+/* ---------- 작성 ---------- */
+let editing=null;
+function addRow(r={}){const tr=document.createElement('tr');
+  tr.innerHTML=`<td><input class="i-name" value="${esc(r.name)}" autocomplete="off"></td><td><input class="i-spec" value="${esc(r.spec)}"></td><td><div class="qtyw"><input class="i-qty n" autocomplete="off" data-num="1" value="${esc(r.qty??'')}"><button class="u-tag" type="button" tabindex="-1">단위</button></div></td><td><input class="i-price n" autocomplete="off" data-num="1" data-comma="1" value="${moneyTxt(r.price)}"></td><td class="n i-amt">0</td><td><input class="i-memo" value="${esc(r.memo)}"></td><td><button class="btn del sm" tabindex="-1" title="줄 삭제">✕</button></td>`;
+  setUnit(tr,r.unit||'');if(r.amt!==undefined&&r.amt!==null&&r.amt!=='')tr.dataset.amt=r.amt;
+  tr.querySelector('.u-tag').onclick=()=>{tr.querySelector('.i-qty').focus();openUnit(tr)};
+  tr.querySelector('.i-name').addEventListener('change',e=>{const it=S.items.find(i=>i.name===e.target.value.trim());if(it)fillItem(tr,it,false)});
+  tr.querySelector('.btn.del').onclick=()=>{tr.remove();if(!$('#rows tbody').children.length)addRow();recalc()};
+  $('#rows tbody').appendChild(tr);return tr}
+/* 자동완성 (입력할 때만 뜸) */
+let ac=null;
+function acClose(){if(ac){ac.pop.remove();ac=null}}
+function acOpen(inp,list,render,onPick){acClose();if(!list.length)return;const rc=inp.getBoundingClientRect(),pop=document.createElement('div');pop.className='acpop';
+  pop.innerHTML=list.map((x,k)=>`<button type="button" data-k="${k}">${render(x)}</button>`).join('');document.body.appendChild(pop);
+  pop.style.left=rc.left+'px';pop.style.top=(rc.bottom+3)+'px';
+  pop.addEventListener('mousedown',e=>e.preventDefault());pop.onclick=e=>{const b=e.target.closest('button');if(b)acPick(+b.dataset.k)};
+  ac={pop,inp,list,onPick,idx:0};acHl()}
+function acHl(){ac.pop.querySelectorAll('button').forEach((b,k)=>b.classList.toggle('on',k===ac.idx))}
+function acPick(k){const{list,onPick}=ac;acClose();onPick(list[k])}
+function acKey(e){if(!ac||e.target!==ac.inp)return false;const n=ac.list.length;
+  if(e.key==='ArrowDown'){ac.idx=(ac.idx+1)%n;acHl()}else if(e.key==='ArrowUp'){ac.idx=(ac.idx+n-1)%n;acHl()}
+  else if(e.key==='Enter'||e.key==='Tab'){acPick(ac.idx)}else if(e.key==='Escape'){acClose()}else return false;
+  e.preventDefault();return true}
+document.addEventListener('mousedown',e=>{if(ac&&!ac.pop.contains(e.target)&&e.target!==ac.inp)acClose()});
+document.addEventListener('focusout',e=>{if(ac&&e.target===ac.inp)setTimeout(()=>{if(ac&&document.activeElement!==ac.inp)acClose()},0)});
+/* 초성 검색: 'ㅂㅇ' → 백오이, '백ㅇ' 처럼 섞어 써도 됨 */
+const CHO='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+const choOf=c=>{const k=c.charCodeAt(0)-0xAC00;return k>=0&&k<11172?CHO[Math.floor(k/588)]:c};
+function hIdx(name,q){name=String(name||'');if(!q)return 0;const i=name.indexOf(q);if(i>=0)return i;if(!/[ㄱ-ㅎ]/.test(q))return -1;
+  const n=name.length,m=q.length;for(let s=0;s+m<=n;s++){let ok=true;for(let j=0;j<m;j++){const a=name[s+j],b=q[j];if(a===b)continue;if(CHO.includes(b)&&choOf(a)===b)continue;ok=false;break}if(ok)return s}return -1}
+const hHas=(name,q)=>hIdx(name,q)>=0;
+function matchSort(arr,key,q){return arr.map(x=>({x,i:hIdx(key(x),q)})).filter(o=>o.i>=0).sort((a,b)=>(a.i===0?0:1)-(b.i===0?0:1)||key(a.x).length-key(b.x).length||key(a.x).localeCompare(key(b.x),'ko')).slice(0,8).map(o=>o.x)}
+function fillItem(tr,it,overwrite){const sp=tr.querySelector('.i-spec'),pr=tr.querySelector('.i-price');tr.querySelector('.i-name').value=it.name;
+  if(overwrite||!sp.value)sp.value=it.spec||'';if(it.unit&&(overwrite||!tr.dataset.unit))setUnit(tr,it.unit);if($('#f-buy').checked&&!pr.value&&num(it.cost))pr.value=fmt(it.cost);recalc()}
+function itemAC(inp){const q=inp.value.trim();if(!q){acClose();return}
+  const buyM=$('#f-buy').checked,STK=stockMap();acOpen(inp,matchSort(S.items,i=>i.name,q),i=>{const st=STK[i.name],pr=buyM&&num(i.cost)?i.cost:i.price;return`<span>${esc(i.name)}</span><span class="m">${i.spec?esc(i.spec)+' · ':''}${i.unit?`<span class="u">${esc(i.unit)}</span>`:'단위 없음'}${buyM&&num(pr)?' · 매입 '+fmt(pr)+'원':''}${st&&st.shown?` · 재고 <b>${fq(Math.round(st.qty*100)/100)}</b>`:''}</span>`},
+    it=>{const tr=inp.closest('tr');fillItem(tr,it,true);const q2=tr.querySelector('.i-qty');q2.focus();q2.select()})}
+function clientAC(inp){const q=inp.value.trim();if(!q){acClose();return}
+  acOpen(inp,matchSort(S.clients,c=>c.name,q),c=>`<span>${esc(c.name)}</span><span class="m">${c.tel?esc(c.tel)+' · ':''}미수 ${fmt(curBalance(c.id))}${Math.round(curBalance(c.id,'buy'))?' · 미지급 '+fmt(curBalance(c.id,'buy')):''}</span>`,
+    c=>{inp.value=c.name;recalc();const f=$('#rows tbody .i-name');f.focus();f.select()})}
+$('#f-client').addEventListener('input',e=>clientAC(e.target));
+$('#f-client').addEventListener('keydown',e=>{if(acKey(e))return;
+  if(e.key==='Enter'||e.key==='ArrowDown'){e.preventDefault();const f=$('#rows tbody .i-name');f.focus();f.select()}});
+/* 화살표 키 칸 이동 */
+const COLS=['i-name','i-spec','i-qty','i-price','i-memo'];
+const colOf=t=>COLS.findIndex(c=>t.classList.contains(c));
+function focusCell(tr,c){const el=tr&&tr.querySelector('.'+COLS[c]);if(el){el.focus();el.select()}}
+const rowHas=tr=>[...tr.querySelectorAll('input')].some(i=>i.value.trim());
+function arrowNav(e){if(!e.key.startsWith('Arrow')||e.shiftKey||e.ctrlKey||e.altKey||e.metaKey)return false;
+  const t=e.target,c=colOf(t);if(c<0)return false;const tr=t.closest('tr'),len=t.value.length,a=t.selectionStart,b=t.selectionEnd,all=a===0&&b===len;
+  let go=null;
+  if(e.key==='ArrowUp'){const p=tr.previousElementSibling;if(p)go=()=>focusCell(p,c);else go=()=>{$('#f-client').focus();$('#f-client').select()}}
+  else if(e.key==='ArrowDown'){let nx=tr.nextElementSibling;if(!nx&&rowHas(tr))nx=addRow();if(nx)go=()=>focusCell(nx,c);else go=()=>{}}
+  else if(e.key==='ArrowLeft'&&(all||b===0)){if(c>0)go=()=>focusCell(tr,c-1);else if(tr.previousElementSibling)go=()=>focusCell(tr.previousElementSibling,COLS.length-1)}
+  else if(e.key==='ArrowRight'&&(all||a===len)){if(c<COLS.length-1)go=()=>focusCell(tr,c+1);else{let nx=tr.nextElementSibling;if(!nx&&rowHas(tr))nx=addRow();if(nx)go=()=>focusCell(nx,0)}}
+  if(!go)return false;e.preventDefault();closeUnit();acClose();go();return true}
+const DEF_UNITS=['박스','Kg','g','개','단','망','봉지','관'];
+const UNITS_=()=>Array.isArray(S.opt.units)&&S.opt.units.length?S.opt.units:DEF_UNITS;let unitPop=null;
+function setUnit(tr,u){tr.dataset.unit=u||'';const t=tr.querySelector('.u-tag');t.textContent=u||'단위';t.classList.toggle('empty',!u)}
+function closeUnit(){if(unitPop){unitPop.pop.remove();unitPop=null}}
+function openUnit(tr){closeUnit();const inp=tr.querySelector('.i-qty'),rc=inp.getBoundingClientRect(),pop=document.createElement('div');pop.className='unitpop';
+  const opts=[...UNITS_(),''];let idx=opts.indexOf(tr.dataset.unit||'');if(idx<0||!tr.dataset.unit)idx=0;
+  pop.innerHTML='<div class="hint">숫자키 · ↑↓ · Enter</div>'+opts.map((u,k)=>`<button type="button" data-k="${k}"><small>${u?(k<9?k+1:'·'):0}</small>${u?esc(u):'없음'}</button>`).join('');
+  document.body.appendChild(pop);pop.style.left=rc.left+'px';const ph=pop.offsetHeight;pop.style.top=(rc.bottom+3+ph>window.innerHeight-4?Math.max(4,rc.top-ph-3):rc.bottom+3)+'px';
+  pop.addEventListener('mousedown',e=>e.preventDefault());pop.onclick=e=>{const b=e.target.closest('button');if(b)pickUnit(+b.dataset.k)};
+  unitPop={pop,tr,idx,opts};hlUnit()}
+function hlUnit(){unitPop.pop.querySelectorAll('button').forEach((b,k)=>b.classList.toggle('on',k===unitPop.idx))}
+function pickUnit(k){const{tr,opts}=unitPop;setUnit(tr,opts[k]);closeUnit();tr.querySelector('.i-price').focus();tr.querySelector('.i-price').select();recalc()}
+document.addEventListener('mousedown',e=>{if(unitPop&&!unitPop.pop.contains(e.target)&&!e.target.closest('.u-tag'))closeUnit()});
+function readRows(){return[...$('#rows tbody').children].map(tr=>({name:tr.querySelector('.i-name').value.trim(),spec:tr.querySelector('.i-spec').value.trim(),qty:tr.querySelector('.i-qty').value,price:tr.querySelector('.i-price').value.replace(/,/g,''),unit:tr.dataset.unit||'',amt:trAmt(tr),memo:tr.querySelector('.i-memo').value.trim()})).filter(r=>r.name||num(r.qty)||num(r.price)||r.amt)}
+function trAmt(tr){return tr.dataset.amt!==undefined?num(tr.dataset.amt):calcAmt(tr.querySelector('.i-qty').value,tr.querySelector('.i-price').value)}
+function formInv(){const name=$('#f-client').value.trim(),cl=S.clients.find(c=>c.name===name),old=editing&&S.invoices.find(i=>i.id===editing);
+  return{id:editing||'_new',no:old?old.no:'(저장 시 번호 부여)',date:$('#f-date').value||today(),clientId:cl?cl.id:null,clientName:name,kind:$('#f-buy').checked?'buy':'sale',taxMode:$('#f-tax').value,paid:num($('#f-paid').value),rows:readRows(),created:old?old.created:Date.now()}}
+function recalc(){[...$('#rows tbody').children].forEach(tr=>tr.querySelector('.i-amt').textContent=fmt(trAmt(tr)));
+  const inv=formInv(),T=invTotal(inv),tax=inv.taxMode==='add10',buy=inv.kind==='buy',prev=inv.clientId?balanceBefore(inv.clientId,inv.date,inv.created,inv.id,inv.kind):0,bal=prev+T.total-inv.paid;
+  const rk=!buy&&inv.clientId?riskOf(inv.clientId):null;$('#f-risk').textContent=rk?'⚠ 미수 주의: '+rk.why:'';
+  $('#f-sum').innerHTML=`<span>${tax?'공급가액':'금액'} <b>${fmt(T.supply)}</b></span>${tax?`<span>세액 <b>${fmt(T.tax)}</b></span>`:''}<span>합계 <b>${fmt(T.total)}</b>원</span><span class="muted">│</span><span>${buy?'전 미지급':'전잔액'} <b>${fmt(prev)}</b></span><span>${buy?'지급':'입금'} <b>${fmt(inv.paid)}</b></span><span>${buy?'미지급 잔액':'잔액'} <b>${fmt(bal)}</b>원</span>`}
+function setBuyUI(){const b=$('#f-buy').checked,card=$('#f-buy').closest('.card');card.classList.toggle('buymode',b);
+  $('#f-client-lbl').textContent=b?'매입처 (산 곳 · 공급자)':'거래처 (공급받는자)';$('#f-paid-lbl').textContent=b?'이번에 준 돈 (지급액)':'이번에 받은 돈 (입금액)';
+  $('#w-title').textContent=(editing?(b?'매입 수정':'거래명세서 수정')+' · No. '+(S.invoices.find(i=>i.id===editing)||{}).no:(b?'산 물건 적기':'거래명세서 작성'));const wt=document.querySelector('section[data-t="write"] .win-title');if(wt)wt.textContent=b?'📥 매입 작성':'📝 명세서 작성';
+  if(curTab==='write')document.querySelectorAll('nav button').forEach(x=>{if(x.dataset.t==='write')x.classList.toggle('on',!b);if(x.dataset.t==='buy')x.classList.toggle('on',b)});recalc()}
+$('#f-buy').addEventListener('change',setBuyUI);
+function newForm(keepKind){editing=null;if(!keepKind)$('#f-buy').checked=false;$('#f-date').value=today();$('#f-client').value='';$('#f-tax').value=S.opt.defTax||'exempt';$('#f-paid').value='';$('#rows tbody').innerHTML='';for(let i=0;i<4;i++)addRow();setBuyUI();markClean('write')}
+function loadForm(inv){editing=inv.id;$('#f-buy').checked=kindOf(inv)==='buy';$('#f-date').value=inv.date;$('#f-client').value=clientOf(inv).name;$('#f-tax').value=inv.taxMode;$('#f-paid').value=inv.paid?fmt(inv.paid):'';$('#rows tbody').innerHTML='';inv.rows.forEach(r=>addRow(r));addRow();tab('write');setBuyUI();markClean('write')}
+function saveInv(andPrint){const inv=formInv();
+  if(!inv.clientName){alert(inv.kind==='buy'?'매입처를 입력해주세요.':'거래처를 입력해주세요.');$('#f-client').focus();return false}
+  if(!inv.rows.length){alert('품목을 한 줄 이상 입력해주세요.\n(돈만 받은 경우는 [거래처] 창에서 입금 등록을 해주세요)');return false}
+  let cl=S.clients.find(c=>c.name===inv.clientName);
+  if(!cl){cl={id:uid(),name:inv.clientName,bizno:'',ceo:'',tel:'',addr:'',opening:0,memo:''};S.clients.push(cl)}
+  inv.clientId=cl.id;delete inv.clientName;
+  inv.rows.forEach(r=>{if(!r.name)return;let it=S.items.find(i=>i.name===r.name);if(!it){if(S.opt.itemAuto===false)return;it={id:uid(),name:r.name,spec:S.opt.specAuto===false?'':r.spec,unit:r.unit||'',price:inv.kind==='buy'||S.opt.priceAuto===false?0:num(r.price)};S.items.push(it)}else{if(r.unit&&!(it.subs||[]).some(s=>s.u===r.unit))it.unit=r.unit;if(r.spec&&S.opt.specAuto!==false)it.spec=r.spec}
+    if(inv.kind==='buy'){if(S.opt.stockAuto!==false)it.track=true;if(r.price!==''&&S.opt.priceAuto!==false&&(!r.unit||r.unit===it.unit))it.cost=num(r.price)}});
+  if(editing){const k=S.invoices.findIndex(x=>x.id===editing),old=S.invoices[k];inv.id=editing;if(kindOf(old)!==inv.kind)inv.no=nextNo(inv.date,inv.kind);S.invoices[k]=inv}else{inv.id=uid();inv.no=nextNo(inv.date,inv.kind);S.invoices.push(inv)}
+  save();refreshLists();let lowTxt='';if(inv.kind==='sale'&&S.opt.stockOn!==false){const M=stockMap();lowTxt=[...new Set(inv.rows.map(r=>r.name))].filter(n=>M[n]&&M[n].shown&&M[n].qty<0).map(n=>`${n} ${fq(Math.round(M[n].qty*100)/100)}`).join(', ')}
+  toast((inv.kind==='buy'?'매입 저장했어요':'저장했어요')+' · No. '+inv.no+(lowTxt?` · ⚠ 재고 부족: ${lowTxt}`:''));if(andPrint)printInvs([inv]);newForm(true);return true}
+$('#b-addrow').onclick=()=>{addRow().querySelector('input').focus()};
+$('#b-save').onclick=()=>saveInv(false);
+$('#b-saveprint').onclick=()=>saveInv(true);
+$('#b-new').onclick=()=>{if(readRows().length&&!confirm('작성 중인 내용을 지울까요?'))return;newForm()};
+$('#b-preview').onclick=()=>{const inv=formInv();if(!inv.rows.length){alert('품목을 먼저 입력해주세요.');return}preview([inv])};
+['#f-date','#f-client','#f-tax','#f-paid'].forEach(s=>$(s).addEventListener('input',recalc));
+$('#rows tbody').addEventListener('input',e=>{if(e.target.classList.contains('i-name'))itemAC(e.target);if(e.target.classList.contains('i-qty')||e.target.classList.contains('i-price'))delete e.target.closest('tr').dataset.amt;recalc()});
+$('#rows tbody').addEventListener('focusout',e=>{if(unitPop&&e.target===unitPop.tr.querySelector('.i-qty'))setTimeout(()=>{if(unitPop&&document.activeElement!==unitPop.tr.querySelector('.i-qty'))closeUnit()},0)});
+$('#rows tbody').addEventListener('keydown',e=>{
+  if(acKey(e))return;
+  if(unitPop&&e.target.classList.contains('i-qty')){const n=unitPop.opts.length;
+    if(e.key==='ArrowDown'){e.preventDefault();unitPop.idx=(unitPop.idx+1)%n;hlUnit();return}
+    if(e.key==='ArrowUp'){e.preventDefault();unitPop.idx=(unitPop.idx+n-1)%n;hlUnit();return}
+    if(e.key==='Enter'){e.preventDefault();pickUnit(unitPop.idx);return}
+    if(e.key==='Escape'){e.preventDefault();closeUnit();return}
+    if(/^[0-9]$/.test(e.key)){const d=+e.key;if(d===0||d<=Math.min(9,n-1)){e.preventDefault();pickUnit(d===0?n-1:d-1)}else e.preventDefault();return}
+    closeUnit()}
+  if(arrowNav(e))return;
+  if(e.key==='Enter'&&e.target.classList.contains('i-qty')){e.preventDefault();openUnit(e.target.closest('tr'));return}
+  if(e.key!=='Enter'||e.target.tagName!=='INPUT')return;e.preventDefault();const ins=[...$('#rows tbody').querySelectorAll('input')],i=ins.indexOf(e.target);if(i===ins.length-1)addRow().querySelector('input').focus();else{ins[i+1].focus();ins[i+1].select()}});
+
+/* ---------- 내역 ---------- */
+let lMode='month',lView='inv',lKind='all';
+const KN={sale:'매출',buy:'매입'};
+const kTag=k=>`<span class="tag ${k}">${KN[k]}</span>`;
+const addDays=(d,n)=>{const x=new Date(d+'T00:00:00');x.setDate(x.getDate()+n);return ymd(x)};
+const addMon=(m,n)=>{let[y,mm]=m.split('-').map(Number);mm+=n;while(mm<1){mm+=12;y--}while(mm>12){mm-=12;y++}return y+'-'+String(mm).padStart(2,'0')};
+function fillYears(){const ys=new Set([+today().slice(0,4)]);S.invoices.forEach(i=>ys.add(+i.date.slice(0,4)));const cur=$('#l-year').value;$('#l-year').innerHTML=[...ys].sort((a,b)=>b-a).map(y=>`<option value="${y}">${y}년</option>`).join('');$('#l-year').value=cur&&ys.has(+cur)?cur:today().slice(0,4)}
+function setMode(m){lMode=m;document.querySelectorAll('#l-mode button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  $('#l-day').classList.toggle('hide',m!=='day');$('#l-mon').classList.toggle('hide',m!=='month');$('#l-year').classList.toggle('hide',m!=='year');$('#l-range').classList.toggle('hide',m!=='range');
+  ['#l-prev','#l-next','#l-now'].forEach(x=>$(x).classList.toggle('hide',m==='range'||m==='all'));
+  $('#l-view button[data-v=date]').textContent=m==='year'||m==='all'?'월별 합계':'날짜별 합계';renderList()}
+function period(){const t=today();
+  if(lMode==='day'){const d=$('#l-day').value||t;return{f:d,t:d,label:dateK(d)}}
+  if(lMode==='month'){const m=$('#l-mon').value||t.slice(0,7);return{f:m+'-01',t:m+'-31',label:`${m.slice(0,4)}년 ${+m.slice(5)}월`}}
+  if(lMode==='year'){const y=$('#l-year').value||t.slice(0,4);return{f:y+'-01-01',t:y+'-12-31',label:y+'년'}}
+  if(lMode==='range'){const f=$('#l-from').value,to=$('#l-to').value;return{f,t:to,label:`${f||'처음'} ~ ${to||'끝'}`}}
+  return{f:'',t:'',label:'전체 기간'}}
+function shift(n){if(lMode==='day')$('#l-day').value=addDays($('#l-day').value||today(),n);if(lMode==='month')$('#l-mon').value=addMon($('#l-mon').value||today().slice(0,7),n);if(lMode==='year'){const y=String(+($('#l-year').value||today().slice(0,4))+n);if(![...$('#l-year').options].some(o=>o.value===y))$('#l-year').insertAdjacentHTML('beforeend',`<option value="${y}">${y}년</option>`);$('#l-year').value=y}renderList()}
+document.querySelectorAll('#l-mode button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+document.querySelectorAll('#l-kind button').forEach(b=>b.onclick=()=>{lKind=b.dataset.k;document.querySelectorAll('#l-kind button').forEach(x=>x.classList.toggle('on',x===b));renderList()});
+document.querySelectorAll('#l-view button').forEach(b=>b.onclick=()=>{lView=b.dataset.v;document.querySelectorAll('#l-view button').forEach(x=>x.classList.toggle('on',x===b));renderList()});
+$('#l-prev').onclick=()=>shift(-1);$('#l-next').onclick=()=>shift(1);
+$('#l-now').onclick=()=>{const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-year').value=t.slice(0,4);renderList()};
+$('#l-clear').onclick=()=>{$('#l-client').value='';$('#l-item').value='';renderList()};
+['#l-day','#l-mon','#l-year','#l-from','#l-to','#l-client','#l-item'].forEach(x=>$(x).addEventListener('input',renderList));
+const inPer=(d,P)=>(!P.f||d>=P.f)&&(!P.t||d<=P.t);
+const kindOk=x=>lKind==='all'||kindOf(x)===lKind;
+function listArr(){const P=period(),q=$('#l-client').value.trim(),it=$('#l-item').value.trim();
+  return S.invoices.filter(i=>kindOk(i)&&inPer(i.date,P)&&(!q||hHas(clientOf(i).name,q))&&(!it||i.rows.some(r=>hHas(r.name,it)))).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:b.created-a.created)}
+function payArr(){const P=period(),q=$('#l-client').value.trim();if($('#l-item').value.trim())return[];return S.payments.filter(p=>kindOk(p)&&inPer(p.date,P)&&(!q||hHas((S.clients.find(c=>c.id===p.clientId)||{name:''}).name,q)))}
+function rowsOf(arr){const it=$('#l-item').value.trim(),out=[];arr.forEach(i=>i.rows.forEach(r=>{if(it&&!hHas(r.name,it))return;const a=rowAmt(r);out.push({inv:i,kind:kindOf(i),r,amt:a,tax:i.taxMode==='add10'?Math.round(a*.1):0})}));return out}
+const zero=()=>({saleCnt:0,sale:0,saleIn:0,buyCnt:0,buy:0,buyOut:0});
+function addTo(o,k,total,paid,isInv){if(k==='sale'){if(isInv){o.saleCnt++;o.sale+=total}o.saleIn+=paid}else{if(isInv){o.buyCnt++;o.buy+=total}o.buyOut+=paid}}
+function groups(arr,pays,forceMon){const byMon=forceMon||lMode==='year'||lMode==='all',cl={},dt={},im={};
+  const C=(cid,name)=>cl[cid]=cl[cid]||Object.assign({name,cid},zero()),D=k=>dt[k]=dt[k]||Object.assign({key:k},zero());
+  arr.forEach(i=>{const T=invTotal(i).total,k=kindOf(i),dk=byMon?i.date.slice(0,7):i.date;addTo(C(i.clientId,clientOf(i).name),k,T,num(i.paid),1);addTo(D(dk),k,T,num(i.paid),1)});
+  pays.forEach(p=>{const c=S.clients.find(x=>x.id===p.clientId);if(!c)return;const k=kindOf(p),dk=byMon?p.date.slice(0,7):p.date;addTo(C(c.id,c.name),k,0,num(p.amount),0);addTo(D(dk),k,0,num(p.amount),0)});
+  rowsOf(arr).forEach(x=>{const key=[x.kind,x.r.name,x.r.spec||'',x.r.unit||''].join('\u0001');const m=im[key]=im[key]||{kind:x.kind,name:x.r.name,spec:x.r.spec||'',unit:x.r.unit||'',cnt:0,qty:0,supply:0};m.cnt++;m.qty+=num(x.r.qty);m.supply+=x.amt});
+  return{cl:Object.values(cl).sort((a,b)=>(b.sale+b.buy)-(a.sale+a.buy)),dt:Object.values(dt).sort((a,b)=>a.key<b.key?-1:1),im:Object.values(im).sort((a,b)=>(a.kind<b.kind?-1:a.kind>b.kind?1:0)||b.supply-a.supply),byMon}}
+const keyLabel=(k,byMon)=>byMon?`${k.slice(0,4)}년 ${+k.slice(5)}월`:k;
+/* 표 정의: 화면 표와 엑셀이 같이 씀 (n=숫자, q=소수 수량, s=합계 표시, tag=화면용 표시) */
+function viewDef(view,G,arr){const all=lKind==='all',SA=lKind!=='buy',BU=lKind!=='sale',c=[];
+  const kcol={h:'구분',v:x=>KN[x.kind||kindOf(x.inv||x)],tag:x=>kTag(x.kind||kindOf(x.inv||x)),w:6};
+  if(view==='inv'){if(all)c.push(kcol);
+    c.push({h:'일자',v:i=>i.date,w:11},{h:'No',v:i=>i.no,w:15},{h:lKind==='buy'?'매입처':'거래처',v:i=>clientOf(i).name,w:18},{h:'품목',v:i=>(i.rows[0]?.name||'')+(i.rows.length>1?` 외 ${i.rows.length-1}`:''),w:22});
+    if(SA)c.push({h:all?'매출':'합계',v:i=>kindOf(i)==='sale'?invTotal(i).total:'',n:1,s:1},{h:'입금',v:i=>kindOf(i)==='sale'?num(i.paid):'',n:1,s:1});
+    if(BU)c.push({h:all?'매입':'합계',v:i=>kindOf(i)==='buy'?invTotal(i).total:'',n:1,s:1},{h:'지급',v:i=>kindOf(i)==='buy'?num(i.paid):'',n:1,s:1});
+    return{rows:arr,cols:c,unit:'건',name:'명세서 목록'}}
+  if(view==='detail'){if(all)c.push(kcol);
+    c.push({h:'일자',v:x=>x.inv.date,w:11},{h:'No',v:x=>x.inv.no,w:15},{h:'거래처',v:x=>clientOf(x.inv).name,w:18},{h:'품목',v:x=>x.r.name,w:18},{h:'규격',v:x=>x.r.spec||'',w:10},
+      {h:'수량',v:x=>x.r.qty===''?'':num(x.r.qty),n:1,q:1},{h:'단위',v:x=>x.r.unit||'',w:6},{h:'단가',v:x=>x.r.price===''?'':num(x.r.price),n:1},...(all?[{h:'매출 금액',v:x=>x.kind==='sale'?x.amt:'',n:1,s:1},{h:'매입 금액',v:x=>x.kind==='buy'?x.amt:'',n:1,s:1}]:[{h:'금액',v:x=>x.amt,n:1,s:1}]),{h:'세액',v:x=>x.tax,n:1,s:!all},{h:'비고',v:x=>x.r.memo||'',w:14});
+    return{rows:rowsOf(arr),cols:c,unit:'줄',name:'품목 상세'}}
+  if(view==='client'){c.push({h:lKind==='buy'?'매입처':'거래처',v:x=>x.name,w:18});
+    if(SA)c.push({h:all?'매출 건수':'건수',v:x=>x.saleCnt,n:1,s:1,w:8},{h:'매출',v:x=>x.sale,n:1,s:1},{h:'입금',v:x=>x.saleIn,n:1,s:1});
+    if(BU)c.push({h:all?'매입 건수':'건수',v:x=>x.buyCnt,n:1,s:1,w:8},{h:'매입',v:x=>x.buy,n:1,s:1},{h:'지급',v:x=>x.buyOut,n:1,s:1});
+    if(SA)c.push({h:'현재 미수',v:x=>Math.round(curBalance(x.cid,'sale')),n:1,s:1});
+    if(BU)c.push({h:'현재 미지급',v:x=>Math.round(curBalance(x.cid,'buy')),n:1,s:1});
+    return{rows:G.cl,cols:c,unit:'곳',name:'거래처별 합계'}}
+  if(view==='date'){c.push({h:G.byMon?'월':'날짜',v:x=>keyLabel(x.key,G.byMon),w:12});
+    if(SA)c.push({h:all?'매출 건수':'건수',v:x=>x.saleCnt,n:1,s:1,w:8},{h:'매출',v:x=>x.sale,n:1,s:1},{h:'입금',v:x=>x.saleIn,n:1,s:1});
+    if(BU)c.push({h:all?'매입 건수':'건수',v:x=>x.buyCnt,n:1,s:1,w:8},{h:'매입',v:x=>x.buy,n:1,s:1},{h:'지급',v:x=>x.buyOut,n:1,s:1});
+    if(all)c.push({h:'차액 (매출-매입)',v:x=>x.sale-x.buy,n:1,s:1,w:15});
+    return{rows:G.dt,cols:c,unit:'',name:G.byMon?'월별 합계':'날짜별 합계'}}
+  if(all)c.push(kcol);
+  c.push({h:'품목',v:x=>x.name,w:18},{h:'규격',v:x=>x.spec,w:10},{h:'단위',v:x=>x.unit,w:6},{h:'거래 횟수',v:x=>x.cnt,n:1,s:1,w:9},{h:'수량 합계',v:x=>x.qty,n:1,q:1,w:10},{h:'평균 단가',v:x=>x.qty?Math.round(x.supply/x.qty):'',n:1},...(all?[{h:'매출 금액',v:x=>x.kind==='sale'?x.supply:'',n:1,s:1},{h:'매입 금액',v:x=>x.kind==='buy'?x.supply:'',n:1,s:1}]:[{h:'금액 합계',v:x=>x.supply,n:1,s:1}]));
+  return{rows:G.im,cols:c,unit:'개 품목',name:'품목별 합계'}}
+/* 거래처 하나를 골랐을 때: 그 기간 총합 + 이월 잔액 */
+function renderCtot(P,q){const box=$('#l-ctot');let c=null;if(q){const ex=S.clients.filter(x=>x.name===q),hs=S.clients.filter(x=>hHas(x.name,q));c=ex.length===1?ex[0]:hs.length===1?hs[0]:null}
+  if(!c||!P.f&&!P.t||$('#l-item').value.trim()){box.classList.add('hide');return}
+  const inP=x=>inPer(x.date,P)&&x.clientId===c.id,iv=S.invoices.filter(inP),py=S.payments.filter(inP);
+  const tot=k=>iv.filter(i=>kindOf(i)===k).reduce((a,i)=>a+invTotal(i).total,0),paid=k=>iv.filter(i=>kindOf(i)===k).reduce((a,i)=>a+num(i.paid),0)+py.filter(p=>kindOf(p)===k).reduce((a,p)=>a+num(p.amount),0);
+  const cnt=k=>iv.filter(i=>kindOf(i)===k).length,end=P.t?P.t+'~':'9999-12-31~';
+  const line=(k,lbl,inL)=>{const b0=P.f?balanceBefore(c.id,P.f,0,null,k):0,b1=balanceBefore(c.id,end,0,null,k);return`<div>${kTag(k)} 지난 잔액 <b>${fmt(b0)}</b>원 + ${lbl} <b>${fmt(tot(k))}</b>원 <span class="muted">(${cnt(k)}건)</span> − ${inL} <b>${fmt(paid(k))}</b>원 = 남은 잔액 <b style="font-size:19px;color:var(--pri)">${fmt(b1)}</b>원</div>`};
+  const hb=lKind!=='sale'&&(cnt('buy')||hasBuy(c)),hs=lKind!=='buy';
+  box.innerHTML=`<div style="font-size:18px;font-weight:bold;margin-bottom:4px">📌 ${esc(c.name)} · ${esc(P.label)} 총합</div>`+(NET()?(()=>{const b0=P.f?balanceBefore(c.id,P.f,0,null,'sale'):0,b1=balanceBefore(c.id,end,0,null,'sale');return`<div>지난 잔액 <b>${fmt(b0)}</b>원 + 매출 <b>${fmt(tot('sale'))}</b>원 − 매입 <b>${fmt(tot('buy'))}</b>원 − 입금 <b>${fmt(paid('sale'))}</b>원 + 지급 <b>${fmt(paid('buy'))}</b>원 = 남은 잔액 <b style="font-size:19px;color:var(--pri)">${balTxt(b1)}</b></div>`})():(hs?line('sale','매출','입금'):'')+(hb?line('buy','매입','지급'):''));
+  box.classList.remove('hide')}
+function sums(d){return d.cols.map(c=>c.s?d.rows.reduce((a,x)=>a+(num(c.v(x))||0),0):null)}
+const cellTxt=(c,v)=>v===''||v==null?'':c.n?(c.q?fq(v):fmt(v)):esc(v);
+function renderList(){if(!$('#l-year').options.length)fillYears();
+  const P=period(),arr=listArr(),pays=payArr(),G=groups(arr,pays);
+  let sale=0,buy=0,sc=0,bc=0,sin=0,bout=0;arr.forEach(i=>{const T=invTotal(i).total;if(kindOf(i)==='buy'){bc++;buy+=T;bout+=num(i.paid)}else{sc++;sale+=T;sin+=num(i.paid)}});
+  pays.forEach(p=>{if(kindOf(p)==='buy')bout+=num(p.amount);else sin+=num(p.amount)});
+  const q=$('#l-client').value.trim(),it=$('#l-item').value.trim();
+  $('#l-sum').innerHTML=`<span><b>${esc(P.label)}</b></span>${q?`<span>거래처: <b>${esc(q)}</b></span>`:''}${it?`<span>품목: <b>${esc(it)}</b></span>`:''}`+
+    (lKind!=='buy'?`<span>${kTag('sale')} <b>${sc}</b>건 <b>${fmt(sale)}</b>원 · 입금 <b>${fmt(sin)}</b></span>`:'')+
+    (lKind!=='sale'?`<span>${kTag('buy')} <b>${bc}</b>건 <b>${fmt(buy)}</b>원 · 지급 <b>${fmt(bout)}</b></span>`:'')+
+    (lKind==='all'?`<span>차액(매출-매입) <b>${fmt(sale-buy)}</b>원</span>`:'')+
+    (it?`<span class="muted">그중 품목 금액 ${fmt(rowsOf(arr).reduce((x,r)=>x+r.amt+r.tax,0))}원</span>`:'');
+  const d=lView==='month'?Object.assign(viewDef('date',groups(arr,pays,true),arr),{name:'월별 합계'}):viewDef(lView,G,arr),inv=lView==='inv',sm=sums(d);renderCtot(P,q);$('#l-invacts').classList.toggle('hide',!inv);
+  const head=`<thead><tr>${inv?'<th><input type="checkbox" id="l-chkall" style="width:auto"></th>':''}${d.cols.map(c=>`<th${c.n?' class="n"':''}>${c.h}</th>`).join('')}${inv?'<th></th>':''}</tr></thead>`;
+  const MAXR=800,shown=d.rows.length>MAXR?d.rows.slice(0,MAXR):d.rows;
+  const body=shown.map(x=>`<tr>${inv?`<td><input type="checkbox" class="l-chk" value="${x.id}" style="width:auto"></td>`:''}${d.cols.map(c=>`<td${c.n?' class="n"':''}>${c.tag?c.tag(x):cellTxt(c,c.v(x))}</td>`).join('')}${inv?`<td><div class="acts"><button class="btn sub sm" data-a="v" data-id="${x.id}">보기</button><button class="btn sub sm" data-a="p" data-id="${x.id}">인쇄</button><button class="btn sub sm" data-a="e" data-id="${x.id}">수정</button><button class="btn del sm" data-a="d" data-id="${x.id}">삭제</button></div></td>`:''}</tr>`).join('')+(d.rows.length>MAXR?`<tr><td colspan="${d.cols.length+(inv?2:0)}" class="muted" style="text-align:center;padding:10px">화면에는 ${MAXR}${d.unit||'줄'}만 보여요. 나머지 ${fmt(d.rows.length-MAXR)}${d.unit||'줄'}까지 보려면 기간을 좁히거나 [엑셀로 저장]을 눌러주세요. (아래 합계는 전체 기준)</td></tr>`:'');
+  const foot=d.rows.length?`<tfoot><tr>${inv?'<td></td>':''}${d.cols.map((c,k)=>`<td${c.n?' class="n"':''}>${k===0?`합계${d.unit?' '+d.rows.length+d.unit:''}`:sm[k]==null?'':c.q?fq(sm[k]):fmt(sm[k])}</td>`).join('')}${inv?'<td></td>':''}</tr></tfoot>`:'';
+  $('#l-table').innerHTML=head+`<tbody>${body||`<tr><td colspan="${d.cols.length+(inv?2:0)}" class="muted">검색 결과가 없어요</td></tr>`}</tbody>`+foot;
+  if(inv)$('#l-chkall').onchange=e=>document.querySelectorAll('.l-chk').forEach(c=>c.checked=e.target.checked)}
+$('#l-table').onclick=e=>{const b=e.target.closest('button');if(!b)return;const inv=S.invoices.find(i=>i.id===b.dataset.id);if(!inv)return;
+  if(b.dataset.a==='v')preview([inv]);if(b.dataset.a==='p')printInvs([inv]);if(b.dataset.a==='e')goEdit(inv);
+  if(b.dataset.a==='d'&&confirm(`No. ${inv.no} (${clientOf(inv).name}) ${KN[kindOf(inv)]} 기록을 삭제할까요?`)){S.invoices=S.invoices.filter(i=>i.id!==inv.id);save();renderList();toast('삭제했어요')}};
+async function goEdit(inv){if(asking)return;asking=true;try{if(await resolveDirty(curTab,'이동'))loadForm(inv)}finally{asking=false}}
+$('#l-printsel').onclick=()=>{const ids=[...document.querySelectorAll('.l-chk:checked')].map(c=>c.value);if(!ids.length){alert('인쇄할 명세서를 체크해주세요.');return}printInvs(listArr().filter(i=>ids.includes(i.id)).reverse())};
+
+/* ---------- 엑셀 ---------- */
+function sheetOf(d){const sm=sums(d),aoa=[d.cols.map(c=>c.h)];d.rows.forEach(x=>aoa.push(d.cols.map(c=>{const v=c.v(x);return v==null?'':v})));
+  if(d.rows.length)aoa.push(d.cols.map((c,k)=>k===0?'합계':sm[k]==null?'':sm[k]));
+  const ws=XLSX.utils.aoa_to_sheet(aoa),R=XLSX.utils.decode_range(ws['!ref']);
+  d.cols.forEach((c,ci)=>{if(!c.n)return;for(let r=1;r<=R.e.r;r++){const a=XLSX.utils.encode_cell({r,c:ci});if(ws[a]&&ws[a].t==='n')ws[a].z=c.q?'#,##0.##':'#,##0'}});
+  ws['!cols']=d.cols.map(c=>({wch:c.w||(c.n?13:12)}));if(d.rows.length)ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:d.rows.length,c:R.e.c}})};return ws}
+async function saveXlsx(wb,name){
+  if(IS_APP){try{const p=await Neutralino.os.showSaveDialog('엑셀로 저장',{defaultPath:name,filters:[{name:'엑셀 파일',extensions:['xlsx']}]});if(!p)return;const fp=/\.xlsx$/i.test(p)?p:p+'.xlsx';
+      await Neutralino.filesystem.writeBinaryFile(fp,XLSX.write(wb,{bookType:'xlsx',type:'array'}));toast('엑셀 저장했어요');
+      if((await ask('엑셀 파일을 저장했어요.<br>바로 열어볼까요?',[{label:'열기',val:'ok'},{label:'닫기',val:'no',cls:'sub'}]))==='ok')Neutralino.os.execCommand(`cmd /c start "" "${winPath(fp)}"`,{background:true})}catch(e){alert('엑셀 저장에 실패했어요. 같은 이름의 파일이 엑셀에서 열려 있으면 닫고 다시 해주세요.')}return}
+  XLSX.writeFile(wb,name)}
+$('#l-xlsx').onclick=()=>{const P=period(),arr=listArr().slice().reverse(),G=groups(arr,payArr()),wb=XLSX.utils.book_new();
+  ['inv','detail','client','date','month','item'].forEach(v=>{if(v==='month'&&G.byMon)return;const d=v==='month'?Object.assign(viewDef('date',groups(arr,payArr(),true),arr),{name:'월별 합계'}):viewDef(v,G,arr);XLSX.utils.book_append_sheet(wb,sheetOf(d),d.name)});
+  const q=$('#l-client').value.trim(),kn={all:'',sale:'_매출',buy:'_매입'}[lKind];
+  saveXlsx(wb,`거래내역${kn}_${P.label.replace(/[\\/:*?"<>|~ ]+/g,'_')}${q?'_'+q:''}.xlsx`)};
+$('#c-xlsx').onclick=()=>{const wb=XLSX.utils.book_new(),rows=[...S.clients].sort((x,y)=>x.name.localeCompare(y.name,'ko'));
+  const d={rows,cols:[{h:'상호',v:c=>c.name,w:18},{h:'대표자',v:c=>c.ceo||'',w:10},{h:'사업자번호',v:c=>c.bizno||'',w:14},{h:'전화',v:c=>c.tel||'',w:14},{h:'주소',v:c=>c.addr||'',w:30},
+    {h:'이월 미수',v:c=>Math.round(num(c.opening)),n:1},{h:'현재 미수 (받을 돈)',v:c=>Math.round(curBalance(c.id)),n:1,s:1,w:16},{h:'이월 미지급',v:c=>Math.round(num(c.openingBuy)),n:1},{h:'현재 미지급 (줄 돈)',v:c=>Math.round(curBalance(c.id,'buy')),n:1,s:1,w:16},{h:'메모',v:c=>c.memo||'',w:16}]};
+  XLSX.utils.book_append_sheet(wb,sheetOf(d),'거래처 미수·미지급');saveXlsx(wb,`거래처_미수미지급_${today()}.xlsx`)};
+
+/* ---------- 거래처 ---------- */
+let editC=null;
+const CF=['name','bizno','ceo','tel','addr','opening','openingBuy','memo'];
+function clearC(){editC=null;CF.forEach(f=>$('#c-'+f).value='');$('#c-title').textContent='거래처 등록';markClean('clients')}
+function renderClients(){let tot=0,totB=0;
+  const cq=($('#c-search').value||'').trim(),onlyRisk=$('#c-risk').checked;$('#c-body').innerHTML=[...S.clients].filter(c=>!cq||[c.name,c.ceo,c.tel,c.bizno].some(v=>hHas(v,cq))).map(c=>({c,r:riskOf(c.id)})).filter(x=>!onlyRisk||x.r).sort((a,b)=>onlyRisk?b.r.bal-a.r.bal:a.c.name.localeCompare(b.c.name,'ko')).map(({c,r})=>{const b=curBalance(c.id),q=curBalance(c.id,'buy');tot+=b;totB+=q;return`<tr${r?' class="risk"':''}><td>${r?'⚠ ':''}${esc(c.name)}</td><td>${esc(c.tel)}</td><td class="n"><b${r?' style="color:var(--warn)"':''}>${fmt(b)}</b></td><td class="n">${Math.round(q)?`<b style="color:#b45309">${fmt(q)}</b>`:'0'}</td><td>${lastRecv(c.id)||'<span class="muted">없음</span>'}</td><td>${r?`<span class="rk">${esc(r.why)}</span>`:''}</td><td><div class="acts"><button class="btn sub sm" data-a="l" data-id="${c.id}">원장 · 입금/지급</button><button class="btn sub sm" data-a="e" data-id="${c.id}">수정</button><button class="btn del sm" data-a="d" data-id="${c.id}">삭제</button></div></td></tr>`}).join('')||'<tr><td colspan="7" class="muted">'+(onlyRisk?'위험 거래처가 없어요. 👍':'등록된 거래처가 없어요. 명세서를 쓰면 자동으로 추가돼요.')+'</td></tr>';
+  $('#c-foot').innerHTML=`거래처 ${S.clients.length}곳 · 전체 미수 <b>${fmt(tot)}</b>원 · 전체 미지급 <b>${fmt(totB)}</b>원${S.opt.riskOn!==false?` · <span class="rk">⚠ 위험 ${riskList().length}곳</span> <span class="muted">(잔액 ${fmt(S.opt.riskAmt??1000000)}원 이상 또는 ${S.opt.riskDays??30}일 넘게 입금 없음 · 기준은 [설정]에서)</span>`:''}`;if(ledgerCid)renderLedger()}
+function saveClient(){const name=$('#c-name').value.trim();if(!name){alert('상호를 입력해주세요.');return false}
+  const dup=S.clients.find(c=>c.name===name&&c.id!==editC);if(dup){alert('같은 이름의 거래처가 이미 있어요.');return false}
+  let c=editC?S.clients.find(x=>x.id===editC):null;if(!c){c={id:uid()};S.clients.push(c)}
+  CF.forEach(f=>c[f]=/^opening/.test(f)?num($('#c-'+f).value):$('#c-'+f).value.trim());save();refreshLists();clearC();renderClients();toast('거래처 저장했어요');return true}
+$('#c-save').onclick=saveClient;
+$('#c-cancel').onclick=clearC;
+$('#c-search').addEventListener('input',renderClients);$('#c-risk').addEventListener('change',renderClients);
+$('#c-body').onclick=e=>{const b=e.target.closest('button');if(!b)return;const c=S.clients.find(x=>x.id===b.dataset.id);if(!c)return;
+  if(b.dataset.a==='l')openLedger(c.id);
+  if(b.dataset.a==='e'){editC=c.id;CF.forEach(f=>$('#c-'+f).value=/^opening/.test(f)?(num(c[f])?fmt(c[f]):''):(c[f]??''));$('#c-title').textContent='거래처 수정 · '+c.name;markClean('clients');winTop()}
+  if(b.dataset.a==='d'){const n=S.invoices.filter(i=>i.clientId===c.id).length;if(!confirm(n?`${c.name}의 명세서·매입 ${n}건과 입금·지급 기록도 같이 삭제돼요. 정말 삭제할까요?`:`${c.name}을(를) 삭제할까요?`))return;
+    S.invoices=S.invoices.filter(i=>i.clientId!==c.id);S.payments=S.payments.filter(p=>p.clientId!==c.id);S.clients=S.clients.filter(x=>x.id!==c.id);if(ledgerCid===c.id){ledgerCid=null;$('#ledger').classList.add('hide')}save();refreshLists();renderClients()}};
+
+let ledgerCid=null;
+function ledgerRows(cid,k='sale'){const c=S.clients.find(x=>x.id===cid);let b=openingOf(c,k);const out=[{date:'',kind:k==='buy'?'이월 미지급':'이월 미수',amt:'',paid:'',bal:b}];
+  entriesFor(cid,k).forEach(e=>{b+=e.amt-e.paid;out.push({date:e.date,kind:e.type==='inv'?(k==='buy'?'매입 ':'명세서 ')+e.ref.no:(k==='buy'?'지급':'입금')+(e.ref.memo?' · '+e.ref.memo:''),amt:e.type==='inv'?e.amt:'',paid:e.paid||'',bal:b,pay:e.type==='pay'?e.ref.id:null})});return out}
+function netLedgerTable(cid,btn){const c=S.clients.find(x=>x.id===cid);let b=netOpen(c);const rows=[{date:'',kind:'이월 잔액',bal:b}];
+  netEntries(cid).forEach(e=>{b+=e.sg*(e.amt-e.paid);const sale=e.sg>0,inv=e.type==='inv';rows.push({date:e.date,kind:inv?(sale?'매출 ':'매입 ')+e.ref.no:(sale?'입금':'지급')+(e.ref.memo?' · '+e.ref.memo:''),sa:inv&&sale?e.amt:'',bu:inv&&!sale?e.amt:'',inn:sale&&e.paid?e.paid:'',out:!sale&&e.paid?e.paid:'',bal:b,pay:inv?null:e.ref.id})});
+  const big=rows.length>1500,sh0=big?[rows[0],...rows.slice(-1500)]:rows,sh=btn?[...sh0].reverse():sh0,skip=btn?sh.length-1:0;
+  return`<div class="tbl-wrap"><table class="t"><thead><tr><th>일자</th><th>내용</th><th class="n">매출</th><th class="n">입금</th><th class="n">매입</th><th class="n">지급</th><th class="n">잔액</th>${btn?'<th></th>':''}</tr></thead><tbody>
+  ${big?`<tr><td colspan="${btn?8:7}" class="muted">기록이 많아서 최근 1,500건만 보여요. (잔액은 전체 기준)</td></tr>`:''}${sh.map((r,k)=>(big&&k===skip)?'':`<tr><td>${r.date}</td><td>${esc(r.kind)}</td>${['sa','inn','bu','out'].map(f=>`<td class="n">${r[f]===''||r[f]==null?'':fmt(r[f])}</td>`).join('')}<td class="n"><b>${fmt(r.bal)}</b></td>${btn?`<td>${r.pay?`<button class="btn del sm" data-pay="${r.pay}">삭제</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>`}
+const balTxt=n=>Math.round(n)>=0?`받을 돈 ${fmt(n)}원`:`줄 돈 ${fmt(-n)}원`;
+const hasBuy=c=>!!num(c.openingBuy)||S.invoices.some(i=>i.clientId===c.id&&kindOf(i)==='buy')||S.payments.some(p=>p.clientId===c.id&&kindOf(p)==='buy');
+function openLedger(cid){ledgerCid=cid;renderLedger();$('#ledger').classList.remove('hide');$('#ledger').scrollIntoView({behavior:'smooth'});setTimeout(()=>{const a=$('#lp-amt');if(a){a.focus();a.select()}},350)}
+function ledgerTable(cid,k,btn){const rows0=ledgerRows(cid,k),rows=btn?[...rows0].reverse():rows0;return`<div class="tbl-wrap"><table class="t"><thead><tr><th>일자</th><th>내용</th><th class="n">${k==='buy'?'매입금액':'거래금액'}</th><th class="n">${k==='buy'?'지급':'입금'}</th><th class="n">${k==='buy'?'미지급':'미수'}</th>${btn?'<th></th>':''}</tr></thead><tbody>
+  ${rows.map(r=>`<tr><td>${r.date}</td><td>${esc(r.kind)}</td><td class="n">${r.amt===''?'':fmt(r.amt)}</td><td class="n">${r.paid===''?'':fmt(r.paid)}</td><td class="n"><b>${fmt(r.bal)}</b></td>${btn?`<td>${r.pay?`<button class="btn del sm" data-pay="${r.pay}">삭제</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>`}
+function renderLedger(){const c=S.clients.find(x=>x.id===ledgerCid);if(!c){$('#ledger').classList.add('hide');return}const hb=hasBuy(c),pk=$('#lp-kind')?$('#lp-kind').value:'sale',net=NET();
+  $('#ledger').innerHTML=`<h2>${esc(c.name)} ${net?`통합 원장 · ${balTxt(netBal(c.id))}`:`원장 · 미수 ${fmt(curBalance(c.id))}원${hb?` · 미지급 ${fmt(curBalance(c.id,'buy'))}원`:''}`}</h2>
+  <div class="row" style="margin-bottom:12px"><select id="lp-kind" style="width:auto"><option value="sale">받은 돈 (입금)</option><option value="buy">준 돈 (지급)</option></select><input type="date" id="lp-date" value="${today()}" style="width:auto"><input id="lp-amt" class="n" autocomplete="off" data-num="1" data-comma="1" placeholder="금액" style="width:140px"><input id="lp-memo" placeholder="메모 (현금, 계좌 등)" style="width:180px"><button class="btn" id="lp-add">등록</button><button class="btn sub" id="lp-print">원장 인쇄</button></div>
+  ${net?`<p class="muted" style="margin:0 0 6px">매출·매입을 합쳐서 계산해요 (잔액이 +면 받을 돈, −면 줄 돈)</p>${netLedgerTable(c.id,1)}`:`<h3 style="font-size:14px;margin:6px 0">${kTag('sale')} 매출 원장 (받을 돈)</h3>${ledgerTable(c.id,'sale',1)}
+  ${hb?`<h3 style="font-size:14px;margin:16px 0 6px">${kTag('buy')} 매입 원장 (줄 돈)</h3>${ledgerTable(c.id,'buy',1)}`:''}`}`;
+  $('#lp-kind').value=pk;
+  $('#lp-add').onclick=()=>{const a=num($('#lp-amt').value),k=$('#lp-kind').value;if(!a){alert('금액을 입력해주세요.');return}S.payments.push({id:uid(),clientId:c.id,kind:k,date:$('#lp-date').value||today(),amount:a,memo:$('#lp-memo').value.trim(),created:Date.now()});save();renderClients();toast(k==='buy'?'지급 등록했어요':'입금 등록했어요');setTimeout(()=>{const x=$('#lp-amt');if(x){x.focus();x.select()}},50)};
+  $('#lp-print').onclick=()=>printLedger(c.id);
+  $('#ledger').querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>{if(!confirm('이 입금·지급 기록을 삭제할까요?'))return;S.payments=S.payments.filter(p=>p.id!==b.dataset.pay);save();renderClients()})}
+function printLedger(cid){const c=S.clients.find(x=>x.id===cid),hb=hasBuy(c);
+  if(NET()){printHTML(`<div class="lp"><h1>거래처 원장</h1><p>거래처: <b>${esc(c.name)}</b> &nbsp;·&nbsp; 출력일: ${dateK(today())} &nbsp;·&nbsp; ${esc(S.company.name)}</p>${netLedgerTable(cid,0)}<p style="text-align:right;font-size:12pt;margin-top:3mm">현재 잔액: <b>${balTxt(netBal(cid))}</b></p></div>`,'A4 portrait');return}
+  printHTML(`<div class="lp"><h1>거래처 원장</h1><p>거래처: <b>${esc(c.name)}</b> &nbsp;·&nbsp; 출력일: ${dateK(today())} &nbsp;·&nbsp; ${esc(S.company.name)}</p>
+  <h3>매출 (받을 돈)</h3>${ledgerTable(cid,'sale',0)}<p style="text-align:right;font-size:12pt;margin:3mm 0 6mm">현재 미수: <b>${fmt(curBalance(cid))}원</b></p>
+  ${hb?`<h3>매입 (줄 돈)</h3>${ledgerTable(cid,'buy',0)}<p style="text-align:right;font-size:12pt;margin-top:3mm">현재 미지급: <b>${fmt(curBalance(cid,'buy'))}원</b></p>`:''}</div>`,'A4 portrait')}
+
+/* ---------- 품목 ---------- */
+let editI=null;
+const IF=['name','spec','unit','price','cost','sp1','su1','sp2','su2'];
+function clearI(){editI=null;IF.forEach(f=>$('#i-'+f).value='');$('#i-track').checked=false;markClean('items')}
+function fillItemUnit(extra){const sel=$('#i-unit'),v=extra!==undefined?extra:sel.value,L=[...UNITS_()];if(v&&!L.includes(v))L.push(v);sel.innerHTML='<option value="">없음</option>'+L.map(u=>`<option>${esc(u)}</option>`).join('');sel.value=v||''}
+function renderItems(){fillItemUnit();['#i-su1','#i-su2'].forEach(s=>{const v=$(s).value;$(s).innerHTML='<option value="">-</option>'+UNITS_().map(u=>`<option>${esc(u)}</option>`).join('');$(s).value=v});const STK=stockMap();$('#i-body').innerHTML=[...S.items].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(i=>{const st=STK[i.name];return`<tr><td>${esc(i.name)}</td><td>${esc(i.spec)}</td><td>${esc(i.unit||'')}</td><td class="n">${num(i.price)?fmt(i.price):''}</td><td class="n">${num(i.cost)?fmt(i.cost):''}</td><td class="n">${st&&st.shown?fq(Math.round(st.qty*100)/100):''}</td><td><div class="acts"><button class="btn sub sm" data-a="e" data-id="${i.id}">수정</button><button class="btn del sm" data-a="d" data-id="${i.id}">삭제</button></div></td></tr>`}).join('')||'<tr><td colspan="7" class="muted">등록된 품목이 없어요</td></tr>'}
+function saveItem(){const name=$('#i-name').value.trim();if(!name){alert('품목명을 입력해주세요.');return false}let it=editI?S.items.find(x=>x.id===editI):null;if(!it){it={id:uid()};S.items.push(it)}it.name=name;it.spec=$('#i-spec').value.trim();it.unit=$('#i-unit').value;it.price=num($('#i-price').value);it.cost=num($('#i-cost').value);it.subs=[[$('#i-su1').value,$('#i-sp1').value],[$('#i-su2').value,$('#i-sp2').value]].filter(x=>x[0]&&num(x[1])>0).map(x=>({u:x[0],per:num(x[1])}));it.track=$('#i-track').checked;save();refreshLists();clearI();renderItems();toast('품목 저장했어요');return true}
+$('#i-save').onclick=saveItem;
+$('#i-delall').onclick=()=>{const n=(S.items||[]).length;if(!n){alert('지울 품목이 없어요.');return}
+  if(!confirm(`등록된 품목 ${n}개를 전부 삭제할까요?\n(이미 쓴 명세서·매입 기록은 그대로 남아요)`))return;
+  if(!confirm('정말 전부 지울까요? 되돌릴 수 없어요.'))return;
+  S.items=[];editI=null;save();refreshLists();clearI();renderItems();toast('품목을 전부 삭제했어요')};
+$('#i-cancel').onclick=clearI;
+$('#i-body').onclick=e=>{const b=e.target.closest('button');if(!b)return;const it=S.items.find(x=>x.id===b.dataset.id);if(!it)return;
+  if(b.dataset.a==='e'){editI=it.id;$('#i-name').value=it.name;$('#i-spec').value=it.spec||'';fillItemUnit(it.unit||'');$('#i-price').value=num(it.price)?fmt(it.price):'';$('#i-cost').value=num(it.cost)?fmt(it.cost):'';const sb=it.subs||[];$('#i-su1').value=sb[0]?sb[0].u:'';$('#i-sp1').value=sb[0]?sb[0].per:'';$('#i-su2').value=sb[1]?sb[1].u:'';$('#i-sp2').value=sb[1]?sb[1].per:'';$('#i-track').checked=!!it.track;markClean('items');winTop()}
+  if(b.dataset.a==='d'&&confirm(it.name+' 품목을 삭제할까요? (이미 쓴 명세서는 그대로 남아요)')){S.items=S.items.filter(x=>x.id!==it.id);save();refreshLists();renderItems()}};
+
+/* ---------- 설정 · 백업 ---------- */
+const SF=['name','bizno','ceo','tel','addr','biz','kind','bank'];
+function readPrintOpt(){S.opt.paper=$('#o-paper').value;S.opt.pmargin=$('#o-pmargin').value;S.opt.copies=$('#o-copies').value;S.opt.a5dir=$('#o-a5dir').value;S.opt.offX=num($('#o-offx').value);S.opt.offY=num($('#o-offy').value);S.opt.scale=Math.min(150,Math.max(30,num($('#o-scale').value)||100))}
+function sampleInv(){return{id:'_test',no:'테스트-001',date:today(),clientId:null,clientName:'테스트 거래처',taxMode:S.opt.defTax||'exempt',paid:0,created:Date.now(),rows:[{name:'백다다기오이',spec:'50개',qty:'10',unit:'박스',price:'23000',memo:'테스트'},{name:'애호박',spec:'20개',qty:'5',unit:'박스',price:'18500',memo:''},{name:'가지',spec:'',qty:'8',unit:'Kg',price:'3000',memo:''}]}}
+function applyStockVis(){const on=S.opt.stockOn!==false;document.querySelectorAll('nav [data-t="stock"],#tile-stock').forEach(e=>e.classList.toggle('hide',!on))}
+function renderSettings(){renderUnits();SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-itemauto').checked=S.opt.itemAuto!==false;$('#o-specauto').checked=S.opt.specAuto!==false;$('#o-priceauto').checked=S.opt.priceAuto!==false;$('#o-stockon').checked=S.opt.stockOn!==false;$('#o-stockauto').checked=S.opt.stockAuto!==false;$('#o-showtax').checked=!!S.opt.showTax;$('#o-risk').checked=S.opt.riskOn!==false;$('#o-ramt').value=fmt(S.opt.riskAmt??1000000);$('#o-rdays').value=S.opt.riskDays??30;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
+  $('#bk-info').textContent=(IS_APP?`자료 위치: ${winPath(DATA_DIR)} (매일 자동백업은 backup 폴더) · `:'')+`현재 자료: 명세서 ${S.invoices.length}건 · 거래처 ${S.clients.length}곳 · 품목 ${S.items.length}개 · 입금 ${S.payments.length}건`}
+function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.imeKo=$('#o-ime').checked;S.opt.itemAuto=$('#o-itemauto').checked;S.opt.specAuto=$('#o-specauto').checked;S.opt.priceAuto=$('#o-priceauto').checked;S.opt.stockOn=$('#o-stockon').checked;S.opt.stockAuto=$('#o-stockauto').checked;applyStockVis();S.opt.showTax=$('#o-showtax').checked;S.opt.riskOn=$('#o-risk').checked;S.opt.riskAmt=num($('#o-ramt').value);S.opt.riskDays=num($('#o-rdays').value);if(S.opt.imeKo)imeInit();else imeStop();S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
+$('#s-save').onclick=saveSettings;
+function setUnits(L){S.opt.units=L;save();renderUnits();toast('단위를 저장했어요')}
+function renderUnits(){const L=UNITS_();$('#u-list').innerHTML=L.map((u,k)=>`<div class="urow"><span class="un">${k<9?k+1:'·'}</span><b>${esc(u)}</b><button class="btn sub sm" data-u="up" data-k="${k}" ${k===0?'disabled':''} title="위로">▲</button><button class="btn sub sm" data-u="down" data-k="${k}" ${k===L.length-1?'disabled':''} title="아래로">▼</button><button class="btn del sm" data-u="del" data-k="${k}">삭제</button></div>`).join('')}
+$('#u-list').onclick=e=>{const b=e.target.closest('button[data-u]');if(!b)return;const L=[...UNITS_()],k=+b.dataset.k;
+  if(b.dataset.u==='up'&&k>0)[L[k-1],L[k]]=[L[k],L[k-1]];else if(b.dataset.u==='down'&&k<L.length-1)[L[k+1],L[k]]=[L[k],L[k+1]];
+  else if(b.dataset.u==='del'){if(L.length<=1){alert('단위는 하나 이상 있어야 해요.');return}if(!confirm(`'${L[k]}' 단위를 목록에서 뺄까요?\n(이미 쓴 명세서의 단위는 그대로 남아요)`))return;L.splice(k,1)}else return;setUnits(L)};
+$('#u-add').onclick=()=>{const u=$('#u-new').value.trim();if(!u)return;const L=[...UNITS_()];if(L.includes(u)){alert('이미 있는 단위예요.');return}L.push(u);$('#u-new').value='';setUnits(L)};
+$('#u-new').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#u-add').click()}});
+$('#u-reset').onclick=()=>{if(confirm('단위 목록을 처음대로(박스·Kg·g·개·단·망·봉지·관) 되돌릴까요?'))setUnits([...DEF_UNITS])};
+function applyUIOpts(){const w=$('#f-tax-wrap');if(w)w.classList.toggle('hide',!S.opt.showTax&&S.opt.defTax!=='add10')}
+document.querySelector('section[data-t="settings"]').addEventListener('change',e=>{const id=e.target.id||'';if(/^(s|o)-/.test(id)){saveSettings();applyUIOpts()}});
+$('#o-test').onclick=()=>{readPrintOpt();save();printInvs([sampleInv()])};
+$('#bk-down').onclick=async()=>{if(IS_APP){try{const p=await Neutralino.os.showSaveDialog('백업 파일 저장',{defaultPath:`거래명세서_백업_${today()}.json`,filters:[{name:'백업 파일',extensions:['json']}]});if(!p)return;await writeBig(/\.json$/i.test(p)?p:p+'.json',bkText());toast('백업 파일을 저장했어요')}catch(e){alert('백업 저장에 실패했어요.')}return}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download=`거래명세서_백업_${today()}.json`;document.body.appendChild(a);a.click();a.remove();toast('백업 파일을 받았어요')};
+async function restoreText(txt){let d;try{d=JSON.parse(txt);if(!d.company||!Array.isArray(d.invoices))throw 0}catch(x){alert('올바른 백업 파일이 아니에요.');return}
+  const when=d.opt&&d.opt.savedAt?` (${new Date(d.opt.savedAt).toLocaleString('ko-KR')} 저장)`:'';
+  if(!confirm(`이 백업 파일${when}로 되돌릴까요?\n명세서 ${d.invoices.length}건 · 거래처 ${(d.clients||[]).length}곳\n\n지금 자료는 이 파일 내용으로 바뀌어요.`))return;
+  if(IS_APP){try{await writeBig(DATA_DIR+'/backup/되살리기전_'+today()+'_'+Date.now()+'.json',JSON.stringify(S))}catch(e){}}
+  const keep={bkDir:S.opt.bkDir,bkLast:S.opt.bkLast,usbLast:S.opt.usbLast,usbPath:S.opt.usbPath},b=blank();S=freezeAmts(Object.assign(b,d,{opt:Object.assign(b.opt,d.opt||{},keep)}));save();refreshLists();renderSettings();newForm();if(curTab==='backup')renderBackup();toast('백업으로 되살렸어요')}
+$('#bk-up').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{restoreText(r.result);e.target.value=''};r.readAsText(f)};
+$('#bk-restore').onclick=async()=>{if(!IS_APP){$('#bk-up').click();return}
+  try{const r=await Neutralino.os.showOpenDialog('되살릴 백업 파일 고르기',{defaultPath:winPath(bkDir())+'\\',filters:[{name:'백업 파일',extensions:['json']},{name:'모든 파일',extensions:['*']}]});if(!r||!r.length)return;restoreText(await Neutralino.filesystem.readFile(r[0]))}catch(e){alert('백업 파일을 읽지 못했어요.\n('+(e.message||e.code||e)+')')}};
+
+/* ---------- 바탕화면 바로가기 (오늘전표 아이콘). exe는 그대로 두고 바로가기에만 아이콘을 입힘 ---------- */
+async function makeShortcut(){if(!IS_APP||typeof NL_OS==='undefined'||NL_OS!=='Windows'||typeof NL_PID==='undefined')return;const flag=DATA_DIR+'/shortcut_v1.txt';
+  try{await Neutralino.filesystem.readFile(flag);return}catch(e){}
+  try{const buf=await (await fetch('icons/app.ico')).arrayBuffer();const ico=DATA_DIR+'/app.ico';await Neutralino.filesystem.writeBinaryFile(ico,buf);
+    const ps=`$d=[Environment]::GetFolderPath('Desktop');$exe=(Get-Process -Id ${NL_PID}).Path;$ico='${winPath(ico).replace(/'/g,"''")}';$w=New-Object -ComObject WScript.Shell;
+$new=Join-Path $d '오늘전표.lnk';$old=@(Get-ChildItem -LiteralPath $d -Filter *.lnk -ErrorAction SilentlyContinue|?{try{$w.CreateShortcut($_.FullName).TargetPath -eq $exe}catch{$false}});
+if($old.Count -gt 0 -and -not (Test-Path -LiteralPath $new)){Move-Item -LiteralPath $old[0].FullName -Destination $new}
+foreach($o in $old|Select-Object -Skip 1){$l=$w.CreateShortcut($o.FullName);$l.IconLocation="$ico,0";$l.Save()}
+$s=$w.CreateShortcut($new);$s.TargetPath=$exe;$s.WorkingDirectory=Split-Path $exe;$s.IconLocation="$ico,0";$s.Description='오늘전표';$s.Save();'ok'`;
+    const r=await psRun(ps,15000);await Neutralino.filesystem.writeFile(flag,new Date().toISOString()+(String(r.stdOut||'').includes('ok')?' ok':' fail'))}catch(e){}}
+
+/* ---------- 백업 창: 컴퓨터 폴더 + USB · 외장하드 ---------- */
+const bkDir=()=>S.opt.bkDir||(DOCS_DIR?DOCS_DIR+'/거래명세서 백업':DATA_DIR+'/backup');
+const pad2=n=>String(n).padStart(2,'0');
+const stamp=()=>{const d=new Date();return`${today()}_${pad2(d.getHours())}${pad2(d.getMinutes())}`};
+const bkText=()=>{S.opt.savedAt=Date.now();return JSON.stringify(S)};
+async function writeBk(dir,name,txt){dir=String(dir).replace(/[\\/]+$/,'');try{await tmo(Neutralino.filesystem.createDirectory(dir),15000)}catch(e){if(e&&e.code==='TIMEOUT')throw e}await writeBig(dir+'/'+name,txt);return dir+'/'+name}
+async function autoPcBackup(txt){try{const dir=bkDir();await writeBk(dir,`거래명세서_${today()}.json`,txt);S.opt.bkLast=Date.now();
+    const f=(await Neutralino.filesystem.readDirectory(dir)).map(x=>x.entry).filter(n=>/^거래명세서_\d{4}-\d\d-\d\d\.json$/.test(n)).sort();for(const o of f.slice(0,Math.max(0,f.length-30)))await Neutralino.filesystem.remove(dir+'/'+o)}catch(e){}}
+const ago=t=>{if(!t)return'<span style="color:var(--warn)">아직 안 했어요</span>';const d=Math.floor((Date.now()-t)/864e5),s=new Date(t).toLocaleString('ko-KR',{month:'long',day:'numeric',hour:'numeric',minute:'2-digit'});return`${s} <span class="muted">(${d<1?'오늘':d+'일 전'})</span>`};
+function bkDue(){const b=$('#nav-bk');if(b)b.classList.toggle('due',!IS_WEB&&(!S.opt.usbLast||Date.now()-S.opt.usbLast>7*864e5))}
+async function renderBackup(){bkDue();
+  if(IS_WEB&&!$('#bk-web')){const c=document.createElement('div');c.className='card';c.id='bk-web';
+    c.innerHTML=`<h2>☁ 서버 저장</h2><p style="margin-top:0;font-size:16px;line-height:1.8">입력하는 자료는 <b>서버에 자동으로 저장</b>되고, 하루 한 번 서버에 백업이 따로 남아요(최근 30일).<br>다른 컴퓨터에서도 같은 번호로 들어오면 똑같이 보여요.</p>
+      <div class="row"><span class="muted">로그인: <b id="bk-webid"></b></span><button class="btn sub" id="bk-logout">로그아웃</button></div>`;
+    const f1=$('section[data-t="backup"] .card');f1.parentNode.insertBefore(c,f1);$('#bk-logout').onclick=webLogout}
+  if(IS_WEB)$('#bk-webid').textContent=WEB_ID.replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');
+  if(IS_WEB){$('#bk-status').innerHTML=`☁ 서버 저장: <b>${ago(S.opt.bkLast)}</b><br>💾 내려받은 백업 파일: <b>${ago(S.opt.usbLast)}</b><br><span class="muted">서버에 자동으로 저장되니 따로 안 해도 돼요. 혹시 몰라 가끔 파일로 받아두면 더 든든해요.</span>`;$('#bk-pccard').classList.add('hide');$('#bk-now').textContent='💾 백업 파일 받기';$('#bk-usb').textContent='🔌 USB에 넣을 파일 받기';return}
+  $('#bk-status').innerHTML=`💻 컴퓨터 백업: <b>${ago(S.opt.bkLast)}</b><br>🔌 USB · 외장하드 백업: <b>${ago(S.opt.usbLast)}</b>${S.opt.usbPath?` <span class="muted">(${esc(winPath(S.opt.usbPath))})</span>`:''}${!S.opt.usbLast||Date.now()-S.opt.usbLast>7*864e5?'<br><span style="color:var(--warn)">컴퓨터가 고장 나면 컴퓨터 백업도 같이 날아가요. 일주일에 한 번은 USB에도 받아두세요.</span>':''}`;
+  $('#bk-pccard').classList.toggle('hide',!IS_APP);if(!IS_APP){$('#bk-now').textContent='💾 백업 파일 받기';return}
+  $('#bk-dir').value=winPath(bkDir());
+  try{const f=(await Neutralino.filesystem.readDirectory(bkDir())).map(x=>x.entry).filter(n=>/^거래명세서_.*\.json$/.test(n)).sort().reverse();$('#bk-files').innerHTML=f.length?`백업 파일 ${f.length}개 · 최근: `+f.slice(0,3).map(esc).join(', '):'아직 백업 파일이 없어요.'}catch(e){$('#bk-files').textContent='아직 백업 파일이 없어요.'}}
+function bkDownload(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bkText()],{type:'application/json'}));a.download=`거래명세서_백업_${stamp()}.json`;document.body.appendChild(a);a.click();a.remove()}
+$('#bk-now').onclick=async()=>{if(!IS_APP){bkDownload();S.opt.bkLast=Date.now();save();renderBackup();toast('백업 파일을 받았어요');return}
+  try{const p=await writeBk(bkDir(),`거래명세서_${stamp()}.json`,bkText());S.opt.bkLast=Date.now();save();renderBackup();toast('컴퓨터에 백업했어요')}
+  catch(e){alert('백업 폴더에 저장하지 못했어요.\n[폴더 바꾸기]로 다른 폴더를 골라주세요.\n('+(e.message||e.code||e)+')')}};
+$('#bk-pick').onclick=async()=>{try{const p=await Neutralino.os.showFolderDialog('백업할 폴더 고르기',{defaultPath:winPath(bkDir())});if(!p)return;S.opt.bkDir=p.replace(/\\/g,'/');save();renderBackup();toast('백업 폴더를 바꿨어요')}catch(e){}};
+$('#bk-dopen').onclick=async()=>{try{await Neutralino.filesystem.createDirectory(bkDir())}catch(e){}try{Neutralino.os.execCommand(`explorer "${winPath(bkDir())}"`,{background:true})}catch(e){}};
+async function usbSave(root,label){const dir=root.replace(/[\\/]+$/,'')+'/거래명세서 백업';
+  try{const p=await writeBk(dir,`거래명세서_${stamp()}.json`,bkText());S.opt.usbLast=Date.now();S.opt.usbPath=dir;save();renderBackup();$('#bk-drvbox').classList.add('hide');
+    await ask(`<b>${esc(label)}</b>에 백업했어요.<br><br><span class="muted">${esc(winPath(p))}</span><br><br>USB를 뺄 땐 작업표시줄의 [하드웨어 안전하게 제거]를 누르고 빼주세요.`,[{label:'확인',val:1}])}
+  catch(e){alert('저장하지 못했어요. USB가 제대로 꽂혀 있는지 확인해주세요.\n('+(e.message||e.code||e)+')')}}
+function psRun(ps,ms){const u=new Uint8Array(ps.length*2);for(let i=0;i<ps.length;i++){const c=ps.charCodeAt(i);u[i*2]=c&255;u[i*2+1]=c>>8}let bin='';u.forEach(b=>bin+=String.fromCharCode(b));
+  /* 주의: execCommand(동기)는 PowerShell이 멈추면 저장·종료까지 전부 멈춤 → 반드시 spawnProcess + 시간제한 */
+  const cmd=`powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -EncodedCommand ${btoa(bin)}`;
+  return new Promise(res=>{let id=null,done=false;const buf={};
+    const fin=()=>{if(done)return;done=true;Neutralino.events.off('spawnedProcess',h);res({stdOut:id!=null&&buf[id]?buf[id].out:''})};
+    const h=e=>{const d=e.detail||{};const b=buf[d.id]=buf[d.id]||{out:'',exit:false};if(d.action==='stdOut')b.out+=d.data;if(d.action==='exit'){b.exit=true;if(d.id===id)fin()}};
+    Neutralino.events.on('spawnedProcess',h);
+    Neutralino.os.spawnProcess(cmd).then(p=>{id=p.id;if(buf[id]&&buf[id].exit)fin()}).catch(()=>fin());
+    setTimeout(()=>{if(!done&&id!=null)Neutralino.os.updateSpawnedProcess(id,'exit').catch(()=>{});fin()},ms||12000)})}
+const DRV_PS=`[Console]::OutputEncoding=[Text.Encoding]::UTF8;$o=@{};Get-CimInstance Win32_LogicalDisk|?{$_.DriveType -eq 2 -and $_.Size}|%{$o[$_.DeviceID]=$_.VolumeName+'|'+$_.Size+'|USB'};try{Get-Disk|?{$_.BusType -eq 'USB'}|Get-Partition|?{$_.DriveLetter}|%{$d=[string]$_.DriveLetter+':';if(-not $o.ContainsKey($d)){$v=Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$d'";$o[$d]=$v.VolumeName+'|'+$v.Size+'|HDD'}}}catch{};$o.Keys|%{$_+'|'+$o[$_]}`;
+$('#bk-usb').onclick=async()=>{if(!IS_APP){bkDownload();S.opt.usbLast=Date.now();save();renderBackup();toast('받은 파일을 USB로 옮겨주세요');return}
+  const box=$('#bk-drvbox'),L=$('#bk-drives');box.classList.remove('hide');$('#bk-drvmsg').textContent='USB · 외장하드 찾는 중...';L.innerHTML='';
+  let ds=[];try{const r=await psRun(DRV_PS);ds=String(r.stdOut||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(x=>{const[id,name,size,kind]=x.split('|');return{id,name:name||'',size:+size||0,kind}}).filter(d=>/^[A-Z]:$/.test(d.id)).sort((a,b)=>a.id.localeCompare(b.id))}catch(e){}
+  $('#bk-drvmsg').innerHTML=ds.length?'어디에 저장할까요? 눌러주세요.':'꽂혀 있는 USB · 외장하드를 못 찾았어요. 꽂혀 있으면 [직접 고르기]를 눌러주세요.';
+  const gb=n=>n?(n>=1e12?(n/1e12).toFixed(1)+'TB':Math.round(n/1e9)+'GB'):'';
+  L.innerHTML=ds.map(d=>`<button data-d="${d.id}" data-l="${esc((d.kind==='HDD'?'외장하드':'USB')+' '+d.id+(d.name?' '+d.name:''))}">${d.kind==='HDD'?'🗄':'🔌'} ${d.kind==='HDD'?'외장하드':'USB'} (${d.id})${d.name?' '+esc(d.name):''} <span style="font-weight:normal;font-size:14px">${gb(d.size)}</span></button>`).join('')+`<button data-pick="1" style="background:#fff;border-color:var(--line);color:var(--ink)">📁 직접 고르기</button>`;
+  L.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>usbSave(b.dataset.d+'/',b.dataset.l));
+  L.querySelector('[data-pick]').onclick=async()=>{try{const p=await Neutralino.os.showFolderDialog('백업 파일을 저장할 곳 (USB · 외장하드)',{defaultPath:S.opt.usbPath?winPath(S.opt.usbPath):''});if(!p)return;
+    const dir=p.replace(/\\/g,'/');try{const fn=`거래명세서_${stamp()}.json`,full=await writeBk(dir,fn,bkText());S.opt.usbLast=Date.now();S.opt.usbPath=dir;save();renderBackup();box.classList.add('hide');toast('백업했어요');await ask(`백업했어요.<br><br><span class="muted">${esc(winPath(full))}</span>`,[{label:'확인',val:1}])}catch(e){alert('저장하지 못했어요.\n('+(e.message||e.code||e)+')')}}catch(e){}}};
+$('#bk-reset').onclick=()=>{if(!confirm('모든 자료(가게정보·거래처·명세서)를 삭제할까요? 되돌릴 수 없어요.'))return;if(!confirm('정말 전부 지울까요? 백업 파일을 받아두셨나요?'))return;S=blank();save();refreshLists();renderSettings();newForm();toast('전체 삭제했어요')};
+
+$('#bk-open').onclick=()=>{try{Neutralino.os.execCommand(`explorer "${winPath(DATA_DIR)}"`,{background:true})}catch(e){}};
+/* ---------- 거래돌이 자료 가져오기 ---------- */
+async function pickMdb(){
+  if(IS_APP){const r=await Neutralino.os.showOpenDialog('거래돌이 백업 파일 선택',{filters:[{name:'거래돌이 백업 파일',extensions:['mdb','MDB']},{name:'모든 파일',extensions:['*']}]});if(!r||!r.length)return null;return new Uint8Array(await Neutralino.filesystem.readBinaryFile(r[0]))}
+  return new Promise(res=>{const i=document.createElement('input');i.type='file';i.accept='.mdb';i.onchange=()=>{const f=i.files[0];if(!f)return res(null);f.arrayBuffer().then(b=>res(new Uint8Array(b)))};i.click()})}
+function busy(msg){const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="box"><div class="msg" style="margin:0">⏳ ${msg}</div></div>`;document.body.appendChild(m);return{set:t=>{m.querySelector('.msg').innerHTML='⏳ '+t},close:()=>m.remove()}}
+const tick=()=>new Promise(r=>setTimeout(r,40));
+function gdDate(d){if(d instanceof Date)return d.toISOString().slice(0,10);const s=String(d||'');const m=s.match(/^(\d\d)\/(\d\d)\/(\d\d)/);return m?`20${m[3]}-${m[1]}-${m[2]}`:s.slice(0,10)}
+function gdNumTxt(v){const s=String(v??'').trim();if(!s)return{n:'',extra:''};const q=parseFloat(s.replace(/,/g,''));if(isNaN(q))return{n:'',extra:s};return{n:String(q),extra:String(q)===s.replace(/,/g,'')?'':s}}
+function gdRead(u8){const r=new MDBReader(MDBBuffer.from(u8.buffer,u8.byteOffset,u8.byteLength)),names=r.getTableNames();
+  const T=n=>names.includes(n)?r.getTable(n).getData():[];
+  if(!names.includes('tb거래처')||!names.includes('tb전표'))throw new Error('거래돌이 백업 파일이 아니에요');
+  return{C:T('tb거래처'),I:T('tb품목'),J:T('tb전표'),L:T('tb전표내역'),A:T('tb_계좌'),title:(T('tbTitle')[0]||{}).Title1||'거래돌이'}}
+function gdConvert(raw){const out={clients:[],items:[],invoices:[],payments:[]},cmap={},names=new Set();
+  const addClient=(gid,o)=>{let n=(o.name||'').trim()||'이름 없음',k=2;while(names.has(n))n=`${o.name} (${k++})`;names.add(n);const c=Object.assign({gid,bizno:'',ceo:'',tel:'',addr:'',opening:0,openingBuy:0,memo:''},o,{name:n});out.clients.push(c);cmap[gid]=c;return c};
+  raw.C.forEach(c=>{const ob=num(c['거래처전잔고']);addClient('gd:c:'+c['거래처id'],{name:c['상호'],bizno:c['등록번호']||'',ceo:c['성명']||'',tel:c['전화번호']||c['핸드폰']||'',addr:c['주소']||'',opening:ob>0?ob:0,openingBuy:ob<0?-ob:0,memo:c['비고']||''})});
+  const cg=id=>{if(id===null||id===undefined||id==='')return cmap['gd:c:none']||addClient('gd:c:none',{name:'(거래처 없음)'});return cmap['gd:c:'+id]||addClient('gd:c:'+id,{name:'거래처 '+id})};
+  const lines={};raw.L.forEach(l=>{(lines[l['전표id']]=lines[l['전표id']]||[]).push(l)});
+  for(const k in lines)lines[k].sort((a,b)=>num(a['No1'])-num(b['No1']));
+  let d0='9999',d1='0000';
+  raw.J.forEach(j=>{const g=num(j['전표구분']),date=gdDate(j['전표날짜']),id=j['전표id'],created=Date.parse(date+'T00:00:00')+num(id);if(!date)return;
+    if(g===1||g===2){const kind=g===2?'sale':'buy',total=num(g===2?j['매출']:j['매입']),paid=num(g===2?j['매입']:j['매출']);
+      let rows=(lines[id]||[]).map(l=>{const q=gdNumTxt(l['수량']),p=gdNumTxt(l['단가']),memo=[l['비고'],q.extra&&'수량 '+q.extra,p.extra].filter(Boolean).join(' · ');
+        return{name:(l['품목']||'').trim(),spec:(l['규격']||'').trim(),qty:q.n,price:p.n,unit:(l['단위']||'').trim(),amt:Math.round(num(l['금액'])),memo}});
+      if(!rows.length)rows=[{name:(j['품목']||'').trim()||'(내용 없음)',spec:'',qty:'',price:'',unit:'',amt:Math.round(total),memo:j['비고']||''}];
+      const c=cg(j['거래처id']);out.invoices.push({gid:'gd:j:'+id,src:num(id),date,clientGid:c.gid,kind,taxMode:'exempt',paid:Math.round(paid),rows,created});
+      if(date<d0)d0=date;if(date>d1)d1=date}
+    else if(g===3||g===4){const amt=g===3?num(j['매입'])-num(j['매출']):num(j['매출'])-num(j['매입']);if(!amt)return;
+      if(g===4&&(j['거래처id']===null||j['거래처id']===undefined||j['거래처id']===''))return;
+      const c=cg(j['거래처id']);out.payments.push({gid:'gd:p:'+id,date,clientGid:c.gid,kind:g===3?'sale':'buy',amount:Math.round(amt),memo:[j['입출금구분'],j['비고']].filter(Boolean).join(' · '),created})}});
+  const inames=new Set();raw.I.forEach(i=>{const n=(i['품목']||'').trim();if(!n||inames.has(n))return;inames.add(n);out.items.push({name:n,spec:(i['규격']||'').trim(),unit:(i['단위']||'').trim(),price:num(i['단가'])})});
+  const recent=out.invoices.filter(i=>i.date>=addDays(d1,-365)).sort((a,b)=>b.created-a.created);
+  for(const inv of recent)for(const r of inv.rows){if(out.items.length>=300)break;if(!r.name||inames.has(r.name)||!r.qty)continue;inames.add(r.name);out.items.push({name:r.name,spec:r.spec,unit:r.unit,price:num(r.price)})}
+  const c0=raw.C.find(c=>num(c['거래처id'])===0&&c['거래처id']!==null),acc=raw.A.find(a=>a['계좌번호']);
+  out.company=c0?{name:c0['상호']||'',bizno:c0['등록번호']||'',ceo:c0['성명']||'',addr:c0['주소']||'',biz:c0['업태']||'',kind:c0['종목']||'',tel:c0['전화번호']||c0['핸드폰']||'',bank:acc?[acc['은행'],acc['계좌번호'],acc['예금주']].filter(Boolean).join(' '):''}:null;
+  out.floor10=raw.C.length>0&&raw.C.filter(c=>num(c['금액계산방법'])===3).length>=raw.C.length/2;
+  out.range=[d0,d1];out.title=raw.title;return out}
+function gdApply(G,mode,fillCo){
+  if(mode==='replace'){S.clients=[];S.items=[];S.invoices=[];S.payments=[]}
+  const byGid=(arr)=>{const m={};arr.forEach(x=>{if(x.gid)m[x.gid]=x});return m};
+  const cBy=byGid(S.clients),idOf={};let nC=0,nI=0,nInv=0,uInv=0,nP=0;
+  G.clients.forEach(c=>{let ex=cBy[c.gid]||(mode==='merge'&&S.clients.find(x=>!x.gid&&x.name===c.name));
+    if(ex){if(!ex.gid)ex.gid=c.gid;['bizno','ceo','tel','addr'].forEach(f=>{if(!ex[f]&&c[f])ex[f]=c[f]})}
+    else{let n=c.name,k=2;while(S.clients.some(x=>x.name===n))n=`${c.name} (${k++})`;ex=Object.assign({},c,{id:uid(),name:n});S.clients.push(ex);nC++}
+    idOf[c.gid]=ex.id});
+  const iNames=new Set(S.items.map(i=>i.name));G.items.forEach(i=>{if(iNames.has(i.name))return;iNames.add(i.name);S.items.push(Object.assign({id:uid()},i));nI++});
+  const invBy=byGid(S.invoices),cnt={};
+  S.invoices.forEach(i=>{if(!i.no)return;const p=i.no.split('-');cnt[p[0]]=Math.max(cnt[p[0]]||0,parseInt(p[1])||0)});
+  G.invoices.slice().sort((a,b)=>a.src-b.src).forEach(g=>{const o={gid:g.gid,date:g.date,clientId:idOf[g.clientGid],kind:g.kind,taxMode:g.taxMode,paid:g.paid,rows:g.rows,created:g.created},ex=invBy[g.gid];
+    if(ex){Object.assign(ex,o);uInv++}else{const pre=(g.kind==='buy'?'P':'')+g.date.replace(/-/g,'');cnt[pre]=(cnt[pre]||0)+1;S.invoices.push(Object.assign({id:uid(),no:pre+'-'+String(cnt[pre]).padStart(3,'0')},o));nInv++}});
+  const payBy=byGid(S.payments);
+  G.payments.forEach(g=>{const o={gid:g.gid,clientId:idOf[g.clientGid],kind:g.kind,date:g.date,amount:g.amount,memo:g.memo,created:g.created},ex=payBy[g.gid];if(ex)Object.assign(ex,o);else{S.payments.push(Object.assign({id:uid()},o));nP++}});
+  if(fillCo&&G.company){for(const f of SF)if(G.company[f])S.company[f]=G.company[f]}
+  if(G.floor10)S.opt.round='floor10';S.opt.netBal=true;
+  return{nC,nI,nInv,uInv,nP}}
+$('#gd-import').onclick=async()=>{if(asking)return;asking=true;let b=null;
+  try{const u8=await pickMdb();if(!u8)return;b=busy('거래돌이 파일을 읽는 중이에요… (자료가 많으면 30초쯤 걸려요)');await tick();
+    let G;try{G=gdConvert(gdRead(u8))}catch(e){b.close();b=null;alert('파일을 읽지 못했어요.\n거래돌이 백업 파일(.mdb)이 맞는지 확인해주세요.\n('+(e.message||e)+')');return}
+    b.close();b=null;
+    const sale=G.invoices.filter(i=>i.kind==='sale').length,buy=G.invoices.length-sale,rec=G.payments.filter(p=>p.kind==='sale').length,pay=G.payments.length-rec,has=S.invoices.length+S.clients.length>0;
+    window._gdco=!S.company.bizno;
+    const msg=`<b>${esc(G.title)}</b> 백업 파일을 읽었어요.<br><br>거래처 <b>${G.clients.length}</b>곳 · 품목 <b>${G.items.length}</b>개<br>매출 <b>${fmt(sale)}</b>건 · 매입 <b>${fmt(buy)}</b>건<br>입금 <b>${fmt(rec)}</b>건 · 지급 <b>${fmt(pay)}</b>건<br>기간 ${G.range[0]} ~ ${G.range[1]}`+
+      (G.company?`<br><br><label class="chk"><input type="checkbox" id="gd-co" ${window._gdco?'checked':''} onchange="window._gdco=this.checked" style="width:auto"> 우리 가게 정보도 거래돌이 것으로 채우기<br><span class="muted">(${esc(G.company.name)} · ${esc(G.company.bizno)})</span></label>`:'')+
+      (G.floor10?'<br><span class="muted">거래돌이 설정대로 금액은 10원 미만 버림으로 맞출게요.</span>':'')+'<br><span class="muted">잔액도 거래돌이처럼 매출·매입을 합쳐서 계산할게요.</span>'+
+      (has?`<br><br>지금 이 프로그램에 이미 자료가 있어요 (명세서 ${fmt(S.invoices.length)}건). 어떻게 할까요?<br><span class="muted">· 지우고 가져오기: 지금 자료를 지우고 거래돌이 자료로 채워요<br>· 합치기: 지금 자료는 두고, 거래돌이 자료를 더해요 (같은 파일을 다시 가져오면 겹치지 않고 바뀐 것만 반영)</span>`:'');
+    const btns=has?[{label:'지우고 가져오기',val:'replace',cls:'del'},{label:'합치기',val:'merge'},{label:'취소',val:'cancel',cls:'sub'}]:[{label:'가져오기',val:'replace'},{label:'취소',val:'cancel',cls:'sub'}];
+    asking=false;const v=await ask(msg,btns);asking=true;if(v==='cancel')return;
+    if(v==='replace'&&has&&(await ask('지금 자료를 지우고 거래돌이 자료로 바꿀까요?<br><span class="muted">혹시 몰라서 지금 자료는 백업 폴더에 따로 저장해둘게요.</span>',[{label:'네, 바꿀게요',val:'ok',cls:'del'},{label:'취소',val:'cancel',cls:'sub'}]))!=='ok')return;
+    b=busy('자료를 옮기는 중이에요…');await tick();
+    if(IS_APP&&has){try{await writeBig(DATA_DIR+'/backup/가져오기전_'+today()+'_'+Date.now()+'.json',JSON.stringify(S))}catch(e){}}
+    const r=gdApply(G,v,window._gdco);save();refreshLists();fillYears();renderSettings();b.close();b=null;
+    await ask(`거래돌이 자료를 가져왔어요! ✅<br><br>새 거래처 ${fmt(r.nC)}곳 · 새 품목 ${fmt(r.nI)}개<br>새 명세서·매입 ${fmt(r.nInv)}건${r.uInv?` · 갱신 ${fmt(r.uInv)}건`:''}<br>새 입금·지급 ${fmt(r.nP)}건<br><br><span class="muted">[거래 내역]과 [거래처]에서 확인해보세요.</span>`,[{label:'확인',val:'ok'}])}
+  finally{if(b)b.close();asking=false}};
+
+/* ---------- 자동 업데이트 ---------- */
+const UPD_URL='https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/manifest.json';
+const UPD_API='https://api.github.com/repos/wndlftnr4669-svg/georae-statement/contents/update/';
+async function fetchFresh(name,rawUrl){try{const r=await fetch(UPD_API+name+'?ref=main&t='+Date.now(),{cache:'no-store',headers:{Accept:'application/vnd.github.raw'}});if(r.ok)return r}catch(e){}
+  const r=await fetch(rawUrl+(rawUrl.includes('?')?'&':'?')+'t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);return r}
+function verCmp(a,b){const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d>0?1:-1}return 0}
+async function sha256hex(buf){const h=await crypto.subtle.digest('SHA-256',buf);return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+let updBusy=false;
+async function checkUpdate(manual){if(!IS_APP||updBusy)return;updBusy=true;let b=null,go=false;
+  try{const r=await fetchFresh('manifest.json',UPD_URL);const m=JSON.parse(await r.text());
+    if(verCmp(m.version,APP_VER)<=0){if(manual)await ask(`지금 쓰는 v${APP_VER}이 최신 버전이에요. 👍`,[{label:'확인',val:'ok'}]);return}
+    if(m.minExe&&typeof NL_VERSION!=='undefined'&&verCmp(NL_VERSION,m.minExe)<0){await ask(`새 버전 v${esc(m.version)}이 나왔는데, 이번 건 프로그램을 새로 받아서 깔아야 해요.<br><span class="muted">${esc(m.download||'')}</span>`,[{label:'확인',val:'ok'}]);return}
+    while(asking)await new Promise(r=>setTimeout(r,500));
+    if(curTab!=='home'&&isDirty(curTab)&&!manual)return;
+    const notes=(m.notes||[]).map(x=>`<li>${esc(x)}</li>`).join('');
+    const v=await ask(`<b>새 버전 v${esc(m.version)}</b>이 나왔어요. (지금 v${APP_VER})${notes?`<ul style="margin:8px 0 0;padding-left:20px;line-height:1.6">${notes}</ul>`:''}<br><span class="muted">자료는 그대로 남아 있고, 업데이트하면 프로그램이 다시 켜져요.</span>`,[{label:'지금 업데이트',val:'go'},{label:'나중에',val:'later',cls:'sub'}]);
+    if(v!=='go')return;go=true;
+    if(curTab!=='home'&&!(await resolveDirty(curTab,'업데이트')))return;
+    b=busy('새 버전을 받는 중이에요…');
+    const rr=await fetchFresh('resources.neu',m.url);
+    const buf=await rr.arrayBuffer();
+    if(m.size&&buf.byteLength!==m.size)throw new Error('받은 파일 크기가 달라요');
+    if(m.sha256&&(await sha256hex(buf))!==m.sha256)throw new Error('받은 파일이 손상됐어요');
+    b.set('설치하는 중이에요…');try{await saving}catch(e){}
+    const P=NL_PATH+'/resources.neu';
+    try{await Neutralino.filesystem.copy(P,P+'.bak')}catch(e){try{await Neutralino.filesystem.writeBinaryFile(P+'.bak',await Neutralino.filesystem.readBinaryFile(P))}catch(e2){}}
+    await Neutralino.filesystem.writeBinaryFile(P,buf);
+    b.set('다시 켜는 중이에요…');imeStop();await tick();await Neutralino.app.restartProcess()}
+  catch(e){if(b)b.close();b=null;if(manual||go)alert('업데이트를 확인하지 못했어요.\n인터넷 연결을 확인하고 다시 해주세요.\n('+(e.message||e)+')')}
+  finally{if(b)b.close();updBusy=false}}
+$('#upd-check').onclick=()=>checkUpdate(true);
+function showWhatsNew(){const last=S.opt.lastVer;if(last===APP_VER)return;S.opt.lastVer=APP_VER;save();if(!last)return;
+  const n=NOTICES.find(x=>x.ver===APP_VER);ask(`v${APP_VER}(으)로 업데이트됐어요! 🎉${n?`<ul style="margin:8px 0 0;padding-left:20px;line-height:1.6">${n.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`,[{label:'확인',val:'ok'}])}
+
+/* ---------- 미수 위험 표시 ---------- */
+const dayDiff=(a,b)=>Math.round((Date.parse(b+'T00:00:00')-Date.parse(a+'T00:00:00'))/86400000);
+var RISKC=null;
+function recvInfo(){if(RISKC)return RISKC;RISKC={};const R=RISKC;
+  S.invoices.forEach(i=>{if(kindOf(i)!=='sale')return;const o=R[i.clientId]=R[i.clientId]||{last:'',first:''};if(num(i.paid)>0&&i.date>o.last)o.last=i.date;if(!o.first||i.date<o.first)o.first=i.date});
+  S.payments.forEach(p=>{if(kindOf(p)!=='sale')return;const o=R[p.clientId]=R[p.clientId]||{last:'',first:''};if(p.date>o.last)o.last=p.date});return R}
+const lastRecv=cid=>(recvInfo()[cid]||{}).last||'';
+function riskOf(cid){if(S.opt.riskOn===false)return null;const bal=curBalance(cid,'sale');if(Math.round(bal)<=0)return null;
+  const amt=S.opt.riskAmt??1000000,days=S.opt.riskDays??30,o=recvInfo()[cid]||{},base=o.last||o.first,r=[];
+  if(amt>0&&bal>=amt)r.push(`잔액 ${fmt(bal)}원`);let d=null;if(base){d=dayDiff(base,today());if(days>0&&d>=days)r.push(o.last?`${d}일째 입금 없음`:`거래 후 ${d}일째 입금 없음`)}
+  return r.length?{why:r.join(' · '),days:d,bal}:null}
+function riskList(){return S.clients.map(c=>({c,r:riskOf(c.id)})).filter(x=>x.r).sort((a,b)=>b.r.bal-a.r.bal)}
+
+/* ---------- 품목 검색 · 거래 기록 ---------- */
+let isKind='all',isTimer=null,isPick='';
+document.querySelectorAll('#is-kind button').forEach(b=>b.onclick=()=>{isKind=b.dataset.k;document.querySelectorAll('#is-kind button').forEach(x=>x.classList.toggle('on',x===b));renderItemSearch()});
+$('#is-q').addEventListener('input',()=>{isPick='';clearTimeout(isTimer);isTimer=setTimeout(renderItemSearch,200)});
+$('#is-per').addEventListener('change',renderItemSearch);
+function renderItemSearch(){const q=$('#is-q').value.trim(),out=$('#is-out');if(!q){out.className='muted';out.innerHTML='품목 이름을 치면 그 글자가 들어간 품목과 거래 기록이 나와요.';return}
+  out.className='';const per=+$('#is-per').value,from=per?addDays(today(),-per):'',G={},H=[];
+  S.invoices.forEach(i=>{if(from&&i.date<from)return;const k=kindOf(i);if(isKind!=='all'&&k!==isKind)return;
+    i.rows.forEach(r=>{if(!r.name||!hHas(r.name,q))return;const g=G[r.name]=G[r.name]||{name:r.name,sc:0,sq:0,sa:0,bc:0,bq:0,ba:0,last:'',lsp:null,lbp:null,lspd:'',lbpd:''};
+      const a=rowAmt(r),qq=num(r.qty);if(k==='sale'){g.sc++;g.sq+=qq;g.sa+=a;if(r.price!==''&&i.date>=g.lspd){g.lsp=num(r.price);g.lspd=i.date}}else{g.bc++;g.bq+=qq;g.ba+=a;if(r.price!==''&&i.date>=g.lbpd){g.lbp=num(r.price);g.lbpd=i.date}}
+      if(i.date>g.last)g.last=i.date;if(!isPick||isPick===r.name)H.push({i,r,k,a})})});
+  const gs=Object.values(G).sort((a,b)=>b.last<a.last?-1:1);
+  if(!gs.length){out.innerHTML=`<p class="muted">'${esc(q)}'이(가) 들어간 거래 기록이 없어요. (기간을 '전체 기간'으로 바꿔보세요)</p>`;return}
+  const STK=stockMap();H.sort((a,b)=>a.i.date<b.i.date?1:a.i.date>b.i.date?-1:b.i.created-a.i.created);
+  const MAX=300,hs=H.slice(0,MAX);
+  out.innerHTML=`<div class="tbl-wrap"><table class="t"><thead><tr><th>품목 (눌러서 골라보기)</th><th class="n">매출 횟수</th><th class="n">매출 수량</th><th class="n">최근 판매가</th><th class="n">매입 횟수</th><th class="n">최근 매입가</th><th class="n">현재 재고</th><th>마지막 거래</th></tr></thead><tbody>
+    ${gs.map(g=>{const st=STK[g.name];return`<tr class="is-g${isPick===g.name?' on':''}" data-n="${esc(g.name)}" style="cursor:pointer${isPick===g.name?';background:#e9f4ee':''}"><td><b>${esc(g.name)}</b></td><td class="n">${g.sc||''}</td><td class="n">${g.sc?fq(g.sq):''}</td><td class="n">${g.lsp!=null?fmt(g.lsp):''}</td><td class="n">${g.bc||''}</td><td class="n">${g.lbp!=null?fmt(g.lbp):''}</td><td class="n">${st&&st.shown?`<span style="${st.qty<0?'color:var(--warn)':''}">${fq(st.qty)} ${esc(st.unit||'')}</span>`:'<span class="muted">-</span>'}</td><td>${g.last}</td></tr>`}).join('')}</tbody></table></div>
+    <h3 style="font-size:14px;margin:14px 0 6px">거래 기록 ${isPick?`· ${esc(isPick)} <button class="btn sub sm" id="is-unpick">전체 보기</button>`:''} <span class="muted">(${fmt(H.length)}건${H.length>MAX?`, 최근 ${MAX}건만 표시`:''})</span></h3>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>날짜</th><th>구분</th><th>거래처</th><th>품목</th><th>규격</th><th class="n">수량</th><th class="n">단가</th><th class="n">금액</th><th>비고</th><th></th></tr></thead><tbody>
+    ${hs.map(x=>`<tr><td>${x.i.date}</td><td>${kTag(x.k)}</td><td>${esc(clientOf(x.i).name)}</td><td>${esc(x.r.name)}</td><td>${esc(x.r.spec||'')}</td><td class="n">${fq(x.r.qty)}${x.r.unit?' '+esc(x.r.unit):''}</td><td class="n">${x.r.price===''?'':fmt(x.r.price)}</td><td class="n">${fmt(x.a)}</td><td>${esc(x.r.memo||'')}</td><td><button class="btn sub sm" data-v="${x.i.id}">보기</button></td></tr>`).join('')}</tbody></table></div>`;
+  out.querySelectorAll('.is-g').forEach(tr=>tr.onclick=()=>{isPick=isPick===tr.dataset.n?'':tr.dataset.n;renderItemSearch()});
+  const un=$('#is-unpick');if(un)un.onclick=()=>{isPick='';renderItemSearch()};
+  out.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{const inv=S.invoices.find(i=>i.id===b.dataset.v);if(inv)preview([inv])})}
+
+/* ---------- 재고 ---------- */
+const itemOf=n=>S.items.find(i=>i.name===n);
+function toBase(name,qty,unit){const it=itemOf(name),q=num(qty);if(!it||!unit||!it.unit||unit===it.unit)return{q,ok:true};
+  const s=(it.subs||[]).find(x=>x.u===unit&&num(x.per)>0);if(s)return{q:q/num(s.per),ok:true};return{q,ok:false}}
+const invStart=()=>S.opt.invStart||'';
+var STKC=null;
+function stockMap(){if(STKC)return STKC;const M={},st=invStart(),rz=S.opt.invResetTs||0;const g=n=>M[n]=M[n]||{name:n,inQ:0,outQ:0,adjQ:0,buyAmt:0,buyQ:0,inVal:0,last:'',lastP:null,bad:0,touched:false};
+  S.invoices.forEach(i=>{if(st&&i.date<st)return;if(rz&&(i.created||0)<=rz)return;const k=kindOf(i);i.rows.forEach(r=>{if(!r.name)return;const o=g(r.name),b=toBase(r.name,r.qty,r.unit);if(!b.ok)o.bad++;
+    if(k==='buy'){if(S.opt.stockAuto===false)return;o.inQ+=b.q;o.buyQ+=b.q;o.buyAmt+=rowAmt(r);o.touched=true;if(i.date>=o.last){o.last=i.date;o.lastP=b.q?rowAmt(r)/b.q:null}}else o.outQ+=b.q})});
+  (S.adj||[]).forEach(a=>{if(st&&a.date<st)return;if(rz&&(a.created||0)<=rz)return;const o=g(a.name),b=toBase(a.name,a.qty,a.unit);o.adjQ+=b.q;o.touched=true;if(a.value&&b.q>0){o.inVal+=a.value;o.buyQ+=b.q;o.buyAmt+=a.value}});
+  for(const n in M){const o=M[n],it=itemOf(n);o.qty=o.inQ-o.outQ+o.adjQ;o.unit=it&&it.unit||'';o.spec=it&&it.spec||'';o.avg=o.buyQ>0?o.buyAmt/o.buyQ:(it&&num(it.cost)||0);o.shown=o.touched||!!(it&&it.track)}
+  (S.items||[]).forEach(it=>{if(it.track&&!M[it.name])M[it.name]={name:it.name,inQ:0,outQ:0,adjQ:0,qty:0,unit:it.unit||'',spec:it.spec||'',avg:num(it.cost),last:'',bad:0,shown:true}});
+  return STKC=M}
+const subsTxt=it=>(it&&it.subs||[]).filter(s=>s.u&&num(s.per)>0).map(s=>`1${it.unit||''}=${fq(s.per)}${s.u}`).join(', ');
+function fillUnitSel(sel,withNone=true){const v=sel.value;sel.innerHTML=(withNone?'<option value="">(기본 단위)</option>':'')+UNITS_().map(u=>`<option>${esc(u)}</option>`).join('');sel.value=v}
+function renderStock(){const M=stockMap(),q=($('#st-q').value||'').trim(),all=$('#st-all').checked;
+  $('#st-since').textContent=[invStart()?`재고 계산 시작일: ${invStart()}`:'',S.opt.invResetTs?`전체 삭제한 날: ${new Date(S.opt.invResetTs).toLocaleDateString('ko-KR')} (그 뒤 기록만 계산)`:''].filter(Boolean).map(t=>`(${t})`).join(' ');
+  const rows=Object.values(M).filter(o=>(all||o.shown)&&(!q||hHas(o.name,q))).sort((a,b)=>a.name.localeCompare(b.name,'ko'));let tv=0;
+  $('#st-table').innerHTML=`<thead><tr><th>품목</th><th>규격</th><th class="n">산 것</th><th class="n">판 것</th><th class="n">맞춤</th><th class="n">현재 재고</th><th class="n">평균 매입단가</th><th class="n">재고 금액</th><th>마지막 매입</th></tr></thead><tbody>${rows.map(o=>{const it=itemOf(o.name),v=o.qty>0?o.qty*o.avg:0;tv+=v;
+    return`<tr${o.qty<0?' style="background:#fdecec"':''}><td><b>${esc(o.name)}</b>${o.bad?` <span class="tag buy" title="품목에 없는 단위로 판 기록이 있어요. [품목]에서 소분 단위를 정해주세요">단위 확인 ${o.bad}</span>`:''}</td><td>${esc(o.spec)}</td><td class="n">${fq(o.inQ)}</td><td class="n">${fq(o.outQ)}</td><td class="n">${o.adjQ?fq(o.adjQ):''}</td><td class="n"><b style="${o.qty<0?'color:var(--warn)':''}">${fq(Math.round(o.qty*100)/100)} ${esc(o.unit)}</b></td><td class="n">${o.avg?fmt(o.avg):''}</td><td class="n">${v?fmt(v):''}</td><td>${o.last||''}</td></tr>`}).join('')||`<tr><td colspan="9" class="muted">아직 재고가 없어요. [매입 작성]으로 산 물건을 적거나, 아래 [재고 맞추기]에서 기초 재고를 넣으면 여기 나와요.</td></tr>`}</tbody>${rows.length?`<tfoot><tr><td colspan="7">합계 ${rows.length}개 품목</td><td class="n">${fmt(tv)}</td><td></td></tr></tfoot>`:''}`;
+  ['#sp-fu','#sp-tu','#aj-unit'].forEach(s=>fillUnitSel($(s)));
+  $('#st-start').value=invStart();
+  const A=[...(S.adj||[])].sort((a,b)=>b.created-a.created).slice(0,30);
+  $('#aj-table').innerHTML=`<thead><tr><th>날짜</th><th>품목</th><th class="n">수량</th><th>내용</th><th></th></tr></thead><tbody>${A.map(a=>`<tr><td>${a.date}</td><td>${esc(a.name)}</td><td class="n" style="${num(a.qty)<0?'color:var(--warn)':''}">${num(a.qty)>0?'+':''}${fq(a.qty)} ${esc(a.unit||'')}</td><td>${esc(a.memo||'')}</td><td><button class="btn del sm" data-aj="${a.id}">삭제</button></td></tr>`).join('')||'<tr><td colspan="5" class="muted">기록이 없어요</td></tr>'}</tbody>`;
+  $('#aj-table').querySelectorAll('[data-aj]').forEach(b=>b.onclick=()=>{const a=S.adj.find(x=>x.id===b.dataset.aj);if(!a)return;const pair=a.link?S.adj.filter(x=>x.link===a.link):[a];
+    if(!confirm(pair.length>1?'이 소분 기록(나가고 들어온 것 2줄)을 같이 삭제할까요?':'이 조정 기록을 삭제할까요?'))return;const ids=new Set(pair.map(x=>x.id));S.adj=S.adj.filter(x=>!ids.has(x.id));save();renderStock()})}
+['#st-q','#st-all'].forEach(s=>$(s).addEventListener('input',renderStock));
+$('#st-delall').onclick=()=>{if(!confirm('재고를 전부 0으로 지울까요?\n(명세서·매입 기록은 그대로 남고, 지금부터 새로 들어오고 나가는 것만 재고로 계산해요)'))return;
+  if(!confirm('정말 재고를 전부 지울까요? 되돌릴 수 없어요.'))return;
+  S.opt.invResetTs=Date.now();S.adj=[];(S.items||[]).forEach(it=>{delete it.track});save();renderStock();toast('재고를 전부 지웠어요')};
+$('#st-start').addEventListener('change',e=>{S.opt.invStart=e.target.value;save();renderStock();toast('재고 계산 시작일을 바꿨어요')});
+const ensureItem=(name,unit)=>{let it=itemOf(name);if(!it){it={id:uid(),name,spec:'',unit:unit||'',price:0};S.items.push(it)}if(!it.unit&&unit)it.unit=unit;it.track=true;return it};
+$('#sp-save').onclick=()=>{const f=$('#sp-from').value.trim(),t=$('#sp-to').value.trim(),fq_=num($('#sp-fq').value),tq=num($('#sp-tq').value);if(!f||!t||!fq_||!tq){alert('원래 품목·수량, 새 품목·수량을 모두 넣어주세요.');return}
+  const fit=ensureItem(f,$('#sp-fu').value),M=stockMap(),avg=(M[f]&&M[f].avg)||num(fit.cost),b=toBase(f,fq_,$('#sp-fu').value),value=Math.round(avg*b.q),link=uid(),date=today(),now=Date.now(),tu=$('#sp-tu').value,tit=ensureItem(t,tu);
+  if(!tit.unit&&tu)tit.unit=tu;if(value&&tq&&(!tu||tu===tit.unit))tit.cost=Math.round(value/tq);
+  S.adj=S.adj||[];S.adj.push({id:uid(),link,date,name:f,qty:-fq_,unit:$('#sp-fu').value,memo:`소분 → ${t} ${fq(tq)}${tu}`,created:now},{id:uid(),link,date,name:t,qty:tq,unit:tu,value,memo:`소분 ← ${f} ${fq(fq_)}${$('#sp-fu').value}`,created:now+1});
+  save();refreshLists();['#sp-from','#sp-fq','#sp-to','#sp-tq'].forEach(s=>$(s).value='');renderStock();toast('소분했어요')};
+$('#aj-save').onclick=()=>{const n=$('#aj-name').value.trim(),q=num($('#aj-qty').value);if(!n||!q){alert('품목과 수량(+/−)을 넣어주세요.');return}
+  const u=$('#aj-unit').value,it=ensureItem(n,u),why=$('#aj-why').value;S.adj=S.adj||[];S.adj.push({id:uid(),date:today(),name:n,qty:q,unit:u,value:why==='기초 재고'&&q>0?Math.round(q*num(it.cost)):0,memo:why,created:Date.now()});
+  save();refreshLists();['#aj-name','#aj-qty'].forEach(s=>$(s).value='');renderStock();toast('재고를 조정했어요')};
+$('#st-xlsx').onclick=()=>{const M=stockMap(),rows=Object.values(M).filter(o=>$('#st-all').checked||o.shown).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  const d={rows,cols:[{h:'품목',v:o=>o.name,w:18},{h:'규격',v:o=>o.spec,w:10},{h:'단위',v:o=>o.unit,w:6},{h:'입고',v:o=>o.inQ,n:1,q:1},{h:'판매',v:o=>o.outQ,n:1,q:1},{h:'조정·소분',v:o=>o.adjQ,n:1,q:1},{h:'현재 재고',v:o=>Math.round(o.qty*100)/100,n:1,q:1},{h:'평균 매입단가',v:o=>Math.round(o.avg||0),n:1},{h:'재고 금액',v:o=>o.qty>0?Math.round(o.qty*o.avg):0,n:1,s:1},{h:'마지막 매입',v:o=>o.last||'',w:11}]};
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,sheetOf(d),'재고');saveXlsx(wb,`재고현황_${today()}.xlsx`)};
+/* 재고·소분 입력칸 자동완성 */
+['#sp-from','#sp-to','#aj-name'].forEach(s=>{const inp=$(s);inp.addEventListener('input',()=>{const q=inp.value.trim();if(!q){acClose();return}
+  acOpen(inp,matchSort(S.items,i=>i.name,q),i=>{const st=stockMap()[i.name];return`<span>${esc(i.name)}</span><span class="m">${i.unit?`<span class="u">${esc(i.unit)}</span>`:''}${st&&st.shown?' · 재고 '+fq(Math.round(st.qty*100)/100):''}</span>`},it=>{inp.value=it.name;inp.dispatchEvent(new Event('change'));const u={'#sp-from':'#sp-fu','#sp-to':'#sp-tu','#aj-name':'#aj-unit'}[s];if(u&&it.unit)$(u).value=it.unit})});
+  inp.addEventListener('keydown',e=>acKey(e))});
+
+/* ---------- 시작 ---------- */
+(async function(){if(IS_WEB){try{await webInit()}catch(e){console.error(e);return}}
+  if(IS_APP){await appInit();await stashCheck();setTimeout(makeShortcut,3000);{const t=S.opt.bkLast;if(!t||new Date(t).toDateString()!==new Date().toDateString())autoPcBackup(JSON.stringify(S)).then(()=>save())}$('#bk-open').classList.remove('hide');setTimeout(bkDue,500);applyStockVis();$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
+  const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-from').value=t.slice(0,8)+'01';$('#l-to').value=t;fillYears();refreshLists();newForm();setMode('month');renderSettings();markClean('clients');markClean('items');applyUIOpts();if(!S.opt.invStart){S.opt.invStart=today();save()}$('#app-ver').textContent='v'+APP_VER+(APP_VER.split('.').length>3?' 테스트':'');$('#upd-ver').textContent='v'+APP_VER;tab('home');if(IS_APP){imeInit().then(()=>setTimeout(imeHangul,1200));showWhatsNew();setTimeout(()=>checkUpdate(false),3000)}})();
+</script>
+</body>
+</html>

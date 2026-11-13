@@ -9,6 +9,17 @@
 :root{--bg:#f4f5f7;--card:#fff;--ink:#1d2330;--sub:#6b7280;--line:#d9dde3;--pri:#1f6f4a;--warn:#b42318}
 *{box-sizing:border-box}
 body{margin:0;font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:16px}
+#cloud{font-size:13px;margin-left:10px;padding:3px 9px;border-radius:12px;background:rgba(255,255,255,.18);vertical-align:3px;font-weight:normal;cursor:pointer}
+#cloud[data-st=err]{background:#ffcdd2;color:#b71c1c;font-weight:bold}#cloud[data-st=busy],#cloud[data-st=wait]{background:rgba(255,255,255,.3)}
+#login{position:fixed;inset:0;z-index:10000;background:linear-gradient(160deg,#1f7a4d,#14553a);display:flex;align-items:center;justify-content:center;padding:16px}
+#login .lbox{background:#fff;border-radius:16px;padding:28px 26px;width:100%;max-width:400px;box-shadow:0 10px 40px rgba(0,0,0,.3);text-align:center}
+#login h1{margin:8px 0 4px;font-size:30px;color:var(--pri)}#login p{margin:0 0 18px;color:#666;font-size:15px}
+#login label{display:block;text-align:left;font-size:16px;font-weight:bold;margin:12px 0 6px}
+#login input{width:100%;box-sizing:border-box;font-size:22px;padding:12px 14px;border:2px solid #cfd8d3;border-radius:10px}
+#login input:focus{border-color:var(--pri);outline:none}
+#login button{width:100%;font-size:20px;padding:14px;border-radius:10px;margin-top:16px;border:0;background:var(--pri);color:#fff;font-weight:bold;cursor:pointer;font-family:inherit}
+#login button.sub{background:#eef3f0;color:var(--pri);margin-top:10px;font-size:17px;padding:12px}
+#login .err{color:#c62828;margin-top:12px;font-size:16px;min-height:22px;font-weight:bold}
 header{background:var(--pri);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:6}
 header h1{cursor:pointer}
 header .ver{font-size:12px;opacity:.75;font-weight:normal;margin-left:6px}
@@ -199,7 +210,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 
 @media print{
   body{background:#fff}
-  header,main,#pv,#toast,#netbar,#win-dim,section.win,.modal,.acpop,.unitpop{display:none!important}
+  header,main,#pv,#toast,#netbar,#login,#win-dim,section.win,.modal,.acpop,.unitpop{display:none!important}
   html,body{background:#fff!important}
   #print{display:block}
 }
@@ -208,7 +219,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 </head>
 <body>
 <header>
-  <h1 onclick="goTab('home')" title="첫 화면"><img src="icons/appIcon.png" alt="" style="width:30px;height:30px;vertical-align:-7px;margin-right:7px;border-radius:8px;box-shadow:0 0 0 2px rgba(255,255,255,.7)">오늘전표<span class="ver" id="app-ver"></span></h1>
+  <h1 onclick="goTab('home')" title="첫 화면"><img src="icons/appIcon.png" alt="" style="width:30px;height:30px;vertical-align:-7px;margin-right:7px;border-radius:8px;box-shadow:0 0 0 2px rgba(255,255,255,.7)">오늘전표<span class="ver" id="app-ver"></span><span id="cloud" class="hide" title="서버 저장 상태"></span></h1>
   <nav>
     <button data-t="write" class="on">명세서 작성</button>
     <button data-t="buy">매입 작성</button>
@@ -540,6 +551,7 @@ const KEY='gm_v1';
 function blank(){return{company:{name:'',bizno:'',ceo:'',addr:'',biz:'',kind:'',tel:'',bank:''},opt:{showBal:true,mono:false,defTax:'exempt',rowsPerPage:10,paper:'a5',a5dir:'portrait',offX:0,offY:0,scale:100},clients:[],items:[],invoices:[],payments:[],adj:[]}}
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.company){const b=blank();return Object.assign(b,s,{opt:Object.assign(b.opt,s.opt||{})})}}catch(e){}return blank()}
 const IS_APP=typeof NL_PATH!=='undefined'&&typeof Neutralino!=='undefined';
+const WEBCFG=window.OJP_WEB||null,IS_WEB=!IS_APP&&!!(WEBCFG&&WEBCFG.url&&WEBCFG.key);
 let DATA_DIR='',DOCS_DIR='',lastBk='',saving=Promise.resolve();
 const winPath=p=>String(p).replace(/\//g,'\\');
 /* ---------- 저장 ----------
@@ -561,6 +573,7 @@ function save(){IDX=null;BAL=null;RISKC=null;STKC=null;
       catch(e){if(e&&e.code==='TIMEOUT'){goNetDown('저장이 끝나지 않아요');break}
         if(!saveErrShown){saveErrShown=true;alert('자료 저장에 실패했어요.\n('+(e&&(e.message||e.code)||e)+')')}}}
     saveRun=null})();saving=saveRun}return}
+  if(IS_WEB){webSave();return}
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){alert('저장에 실패했어요. 브라우저 저장공간을 확인해주세요.')}}
 
 /* ---------- 3. 연결 끊김 감지 + 임시 보관 ----------
@@ -578,13 +591,85 @@ async function stashCheck(){let t=null;try{t=await stashGet()}catch(e){return}if
     if(!netDown){await stashDel();toast('끊겼던 동안의 자료를 저장했어요 ✅')}return}}catch(e){}
   try{await stashDel()}catch(e){}}
 
+/* ---------- 웹 버전: Supabase 로그인 + 서버 저장 ----------
+   자료 전체(S)를 gzip으로 묶어 storage 'stores' 버킷의 <uid>/data.json.gz 하나에 저장. 하루 한 번 <uid>/backup/날짜.json.gz.
+   이 컴퓨터(IndexedDB)에도 먼저 써두고(dirty 표시), 서버 저장이 끝나면 dirty 해제 → 인터넷이 끊겨도 안 날아감. */
+let SB=null,UID='',WEB_ID='',webDirty=false,webTimer=null,webBusy=null,webRemoteAt='',webLastBk='';
+const ID_DOMAIN='@ojeonpyo.app',idToEmail=id=>'u'+String(id).replace(/\D/g,'')+ID_DOMAIN;
+const gzBlob=async txt=>await new Response(new Blob([txt]).stream().pipeThrough(new CompressionStream('gzip'))).blob();
+const gunzipText=async blob=>await new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+function cloud(st,msg){const e=$('#cloud');if(!e)return;e.classList.remove('hide');e.dataset.st=st;e.textContent=msg}
+const ST=()=>SB.storage.from('stores');
+async function remoteStamp(){const{data,error}=await ST().list(UID,{search:'data.json.gz'});if(error)throw error;const f=(data||[]).find(x=>x.name==='data.json.gz');return f?String(f.updated_at||f.created_at||'x'):''}
+async function remoteText(){const{data,error}=await ST().download(UID+'/data.json.gz?t='+Date.now());if(error)throw error;return await gunzipText(data)}
+const cacheKey=()=>'web_'+UID,cacheSet=v=>idb('readwrite',st=>st.put(v,cacheKey())),cacheGet=()=>idb('readonly',st=>st.get(cacheKey()));
+function webSave(){webDirty=true;cloud('wait','☁ 저장 대기…');clearTimeout(webTimer);webTimer=setTimeout(webFlush,1500)}
+async function webFlush(){clearTimeout(webTimer);if(webBusy)return webBusy.then(()=>{if(webDirty)return webFlush()});
+  webBusy=(async()=>{while(webDirty){webDirty=false;S.opt.savedAt=Date.now();const txt=JSON.stringify(S),at=S.opt.savedAt;
+    try{await cacheSet({txt,dirty:true,at})}catch(e){}
+    if(!navigator.onLine){webDirty=true;cloud('err','⚠ 인터넷 끊김 · 이 컴퓨터에 임시 보관 중');break}
+    cloud('busy','☁ 저장 중…');
+    try{const now=await remoteStamp();
+      if(webRemoteAt&&now&&now!==webRemoteAt){const c=await ask('다른 컴퓨터(또는 다른 창)에서 자료가 바뀌었어요.<br>어느 쪽을 쓸까요?',[{label:'그쪽 자료 불러오기',val:'theirs'},{label:'지금 이 화면 자료로 저장',val:'mine',cls:'sub'}]);
+        if(c!=='mine'){await webPullReload();return}}
+      const blob=await gzBlob(txt);const r=await ST().upload(UID+'/data.json.gz',blob,{upsert:true,contentType:'application/gzip',cacheControl:'0'});if(r.error)throw r.error;
+      const d=today();if(webLastBk!==d){const r2=await ST().upload(`${UID}/backup/${d}.json.gz`,blob,{upsert:true,contentType:'application/gzip'});if(!r2.error){webLastBk=d;webPrune()}}
+      webRemoteAt=await remoteStamp();S.opt.bkLast=Date.now();
+      if(!webDirty){try{await cacheSet({txt,dirty:false,at})}catch(e){}}
+      cloud('ok','☁ 저장됨')}
+    catch(e){webDirty=true;cloud('err','⚠ 저장 안 됨 · 다시 시도 중');console.warn('save',e);setTimeout(()=>{if(webDirty)webFlush()},10000);break}}})();
+  try{await webBusy}finally{webBusy=null}}
+async function webPrune(){try{const{data}=await ST().list(UID+'/backup',{limit:1000});const f=(data||[]).map(x=>x.name).filter(n=>/^\d{4}-\d\d-\d\d\.json\.gz$/.test(n)).sort();
+  const old=f.slice(0,Math.max(0,f.length-30)).map(n=>`${UID}/backup/${n}`);if(old.length)await ST().remove(old)}catch(e){}}
+async function webPullReload(){const b=busy('다른 곳에서 바뀐 자료를 불러오는 중이에요…');try{const t=await remoteText();await cacheSet({txt:t,dirty:false,at:Date.now()})}catch(e){}location.reload()}
+function loginScreen(){return new Promise(res=>{const w=document.createElement('div');w.id='login';
+  w.innerHTML=`<div class="lbox"><img src="icons/appIcon.png" alt="" style="width:72px;height:72px;border-radius:16px"><h1>오늘전표</h1><p>휴대폰 번호랑 비밀번호로 들어와요</p>
+    <label for="lg-id">휴대폰 번호</label><input id="lg-id" inputmode="numeric" autocomplete="username" placeholder="01012345678">
+    <label for="lg-pw">비밀번호</label><input id="lg-pw" type="password" autocomplete="current-password" placeholder="6자리 이상">
+    <div id="lg-pw2box" class="hide"><label for="lg-pw2">비밀번호 한 번 더</label><input id="lg-pw2" type="password" autocomplete="new-password"></div>
+    <button id="lg-go">들어가기</button><button id="lg-sw" class="sub">처음이에요 · 가입하기</button><div class="err" id="lg-err"></div></div>`;
+  document.body.appendChild(w);let join=false;const E=t=>$('#lg-err').textContent=t;
+  const sw=()=>{join=!join;$('#lg-pw2box').classList.toggle('hide',!join);$('#lg-go').textContent=join?'가입하고 들어가기':'들어가기';$('#lg-sw').textContent=join?'이미 가입했어요 · 들어가기':'처음이에요 · 가입하기';E('')};
+  $('#lg-sw').onclick=sw;
+  const go=async()=>{const id=$('#lg-id').value.replace(/\D/g,''),pw=$('#lg-pw').value;if(!/^01\d{8,9}$/.test(id))return E('휴대폰 번호를 숫자로 넣어주세요. (예: 01012345678)');if(pw.length<6)return E('비밀번호는 6자리 이상이에요.');
+    if(join&&pw!==$('#lg-pw2').value)return E('비밀번호 두 번 넣은 게 서로 달라요.');
+    $('#lg-go').disabled=true;E('');$('#lg-go').textContent='잠깐만요…';
+    try{const r=join?await SB.auth.signUp({email:idToEmail(id),password:pw}):await SB.auth.signInWithPassword({email:idToEmail(id),password:pw});
+      if(r.error)throw r.error;if(!r.data.session)throw{message:'가입은 됐는데 바로 못 들어갔어요. 관리자에게 [메일 확인 끄기] 설정을 부탁하세요.'};w.remove();res(r.data.session)}
+    catch(e){const m=String(e&&e.message||e);E(/Invalid login/i.test(m)?'번호나 비밀번호가 틀렸어요.':/already registered|already exists/i.test(m)?'이미 가입된 번호예요. [들어가기]로 해주세요.':/fetch|network/i.test(m)?'인터넷 연결을 확인해주세요.':m)}
+    finally{const g=$('#lg-go');if(g){g.disabled=false;g.textContent=join?'가입하고 들어가기':'들어가기'}}};
+  $('#lg-go').onclick=go;w.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(e.target.id==='lg-id')$('#lg-pw').focus();else go()}});setTimeout(()=>$('#lg-id').focus(),50)})}
+function webFail(msg){const w=document.createElement('div');w.id='login';w.innerHTML=`<div class="lbox"><h1>😥</h1><p style="font-size:18px;color:#333">${msg}</p><button onclick="location.reload()">다시 시도</button></div>`;document.body.appendChild(w)}
+async function webInit(){SB=window.supabase.createClient(WEBCFG.url,WEBCFG.key,{auth:{persistSession:true,autoRefreshToken:true}});
+  let session=null;try{session=(await SB.auth.getSession()).data.session}catch(e){}
+  if(!session)session=await loginScreen();
+  UID=session.user.id;WEB_ID=String(session.user.email||'').replace(ID_DOMAIN,'').replace(/^u/,'');
+  const b=busy('자료를 불러오는 중이에요…');
+  try{let cache=null;try{cache=await cacheGet()}catch(e){}
+    webRemoteAt=await remoteStamp();const R=webRemoteAt?JSON.parse(await remoteText()):null;
+    let use=R,push=false;
+    if(cache&&cache.dirty&&(!R||cache.at>((R.opt&&R.opt.savedAt)||0))){use=JSON.parse(cache.txt);push=true}
+    else if(!R&&cache){use=JSON.parse(cache.txt);push=true}
+    if(use&&use.company){const bl=blank();S=freezeAmts(Object.assign(bl,use,{opt:Object.assign(bl.opt,use.opt||{})}))}
+    try{const{data}=await ST().list(UID+'/backup',{search:today()});if((data||[]).some(x=>x.name===today()+'.json.gz'))webLastBk=today()}catch(e){}
+    cloud('ok','☁ 저장됨');if(push){webDirty=true;webFlush()}}
+  catch(e){b.close();webFail('자료를 불러오지 못했어요.<br>인터넷 연결을 확인하고 [다시 시도]를 눌러주세요.<br><span style="font-size:13px;color:#999">'+esc(String(e&&e.message||e))+'</span>');throw e}
+  b.close();
+  $('#cloud').onclick=()=>{if(webDirty||$('#cloud').dataset.st==='err')webFlush();else toast('자료는 서버에 자동으로 저장돼요 ☁')};
+  window.addEventListener('beforeunload',e=>{if(webDirty||webBusy){webFlush();e.preventDefault();e.returnValue=''}});
+  document.addEventListener('visibilitychange',async()=>{if(document.hidden){if(webDirty)webFlush();return}
+    if(!webDirty&&!webBusy){try{const now=await remoteStamp();if(webRemoteAt&&now&&now!==webRemoteAt&&!isDirty(curTab)){toast('다른 곳에서 바뀐 자료를 불러올게요');webPullReload()}}catch(e){}}});
+  window.addEventListener('online',()=>{if(webDirty)webFlush()});window.addEventListener('offline',()=>cloud('err','⚠ 인터넷 끊김 · 이 컴퓨터에 임시 보관 중'))}
+async function webLogout(){if(!(await ask(`로그아웃할까요?<br><span class="muted">(${esc(WEB_ID)})</span>`,[{label:'로그아웃',val:1},{label:'취소',val:0,cls:'sub'}])))return;
+  if(webDirty||webBusy){const b=busy('저장하는 중이에요…');try{await webFlush()}catch(e){}b.close()}await SB.auth.signOut();location.reload()}
+
 async function appInit(){Neutralino.init();Neutralino.events.on('windowClose',onCloseReq);Neutralino.events.on('serverOffline',()=>goNetDown('프로그램 연결이 끊겼어요'));
   try{DATA_DIR=(await Neutralino.os.getPath('data')).replace(/[\\/]+$/,'')+'/GeoraeStatement'}catch(e){DATA_DIR=NL_PATH+'/data'}
   try{DOCS_DIR=(await Neutralino.os.getPath('documents')).replace(/[\\/]+$/,'')}catch(e){DOCS_DIR=''}
   for(const d of [DATA_DIR,DATA_DIR+'/backup']){try{await Neutralino.filesystem.createDirectory(d)}catch(e){}}
   try{const t=await Neutralino.filesystem.readFile(DATA_DIR+'/data.json');const d=JSON.parse(t);if(d&&d.company){const b=blank();S=freezeAmts(Object.assign(b,d,{opt:Object.assign(b.opt,d.opt||{})}));IDX=null}}catch(e){}
   try{const st=await Neutralino.filesystem.readDirectory(DATA_DIR+'/backup');const f=st.map(x=>x.entry).filter(n=>/^\d{4}-\d\d-\d\d\.json$/.test(n)).sort();if(f.includes(today()+'.json'))lastBk=today();for(const old of f.slice(0,Math.max(0,f.length-10)))await Neutralino.filesystem.remove(DATA_DIR+'/backup/'+old)}catch(e){}}
-let S=freezeAmts(load());
+let S=freezeAmts(IS_WEB?blank():load());
 
 /* ---------- 도우미 ---------- */
 const $=s=>document.querySelector(s);
@@ -1162,8 +1247,14 @@ async function writeBk(dir,name,txt){dir=String(dir).replace(/[\\/]+$/,'');try{a
 async function autoPcBackup(txt){try{const dir=bkDir();await writeBk(dir,`거래명세서_${today()}.json`,txt);S.opt.bkLast=Date.now();
     const f=(await Neutralino.filesystem.readDirectory(dir)).map(x=>x.entry).filter(n=>/^거래명세서_\d{4}-\d\d-\d\d\.json$/.test(n)).sort();for(const o of f.slice(0,Math.max(0,f.length-30)))await Neutralino.filesystem.remove(dir+'/'+o)}catch(e){}}
 const ago=t=>{if(!t)return'<span style="color:var(--warn)">아직 안 했어요</span>';const d=Math.floor((Date.now()-t)/864e5),s=new Date(t).toLocaleString('ko-KR',{month:'long',day:'numeric',hour:'numeric',minute:'2-digit'});return`${s} <span class="muted">(${d<1?'오늘':d+'일 전'})</span>`};
-function bkDue(){const b=$('#nav-bk');if(b)b.classList.toggle('due',!S.opt.usbLast||Date.now()-S.opt.usbLast>7*864e5)}
+function bkDue(){const b=$('#nav-bk');if(b)b.classList.toggle('due',!IS_WEB&&(!S.opt.usbLast||Date.now()-S.opt.usbLast>7*864e5))}
 async function renderBackup(){bkDue();
+  if(IS_WEB&&!$('#bk-web')){const c=document.createElement('div');c.className='card';c.id='bk-web';
+    c.innerHTML=`<h2>☁ 서버 저장</h2><p style="margin-top:0;font-size:16px;line-height:1.8">입력하는 자료는 <b>서버에 자동으로 저장</b>되고, 하루 한 번 서버에 백업이 따로 남아요(최근 30일).<br>다른 컴퓨터에서도 같은 번호로 들어오면 똑같이 보여요.</p>
+      <div class="row"><span class="muted">로그인: <b id="bk-webid"></b></span><button class="btn sub" id="bk-logout">로그아웃</button></div>`;
+    const f1=$('section[data-t="backup"] .card');f1.parentNode.insertBefore(c,f1);$('#bk-logout').onclick=webLogout}
+  if(IS_WEB)$('#bk-webid').textContent=WEB_ID.replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');
+  if(IS_WEB){$('#bk-status').innerHTML=`☁ 서버 저장: <b>${ago(S.opt.bkLast)}</b><br>💾 내려받은 백업 파일: <b>${ago(S.opt.usbLast)}</b><br><span class="muted">서버에 자동으로 저장되니 따로 안 해도 돼요. 혹시 몰라 가끔 파일로 받아두면 더 든든해요.</span>`;$('#bk-pccard').classList.add('hide');$('#bk-now').textContent='💾 백업 파일 받기';$('#bk-usb').textContent='🔌 USB에 넣을 파일 받기';return}
   $('#bk-status').innerHTML=`💻 컴퓨터 백업: <b>${ago(S.opt.bkLast)}</b><br>🔌 USB · 외장하드 백업: <b>${ago(S.opt.usbLast)}</b>${S.opt.usbPath?` <span class="muted">(${esc(winPath(S.opt.usbPath))})</span>`:''}${!S.opt.usbLast||Date.now()-S.opt.usbLast>7*864e5?'<br><span style="color:var(--warn)">컴퓨터가 고장 나면 컴퓨터 백업도 같이 날아가요. 일주일에 한 번은 USB에도 받아두세요.</span>':''}`;
   $('#bk-pccard').classList.toggle('hide',!IS_APP);if(!IS_APP){$('#bk-now').textContent='💾 백업 파일 받기';return}
   $('#bk-dir').value=winPath(bkDir());
@@ -1393,7 +1484,8 @@ $('#st-xlsx').onclick=()=>{const M=stockMap(),rows=Object.values(M).filter(o=>$(
   inp.addEventListener('keydown',e=>acKey(e))});
 
 /* ---------- 시작 ---------- */
-(async function(){if(IS_APP){await appInit();await stashCheck();setTimeout(makeShortcut,3000);{const t=S.opt.bkLast;if(!t||new Date(t).toDateString()!==new Date().toDateString())autoPcBackup(JSON.stringify(S)).then(()=>save())}$('#bk-open').classList.remove('hide');setTimeout(bkDue,500);applyStockVis();$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
+(async function(){if(IS_WEB){try{await webInit()}catch(e){console.error(e);return}}
+  if(IS_APP){await appInit();await stashCheck();setTimeout(makeShortcut,3000);{const t=S.opt.bkLast;if(!t||new Date(t).toDateString()!==new Date().toDateString())autoPcBackup(JSON.stringify(S)).then(()=>save())}$('#bk-open').classList.remove('hide');setTimeout(bkDue,500);applyStockVis();$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
   const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-from').value=t.slice(0,8)+'01';$('#l-to').value=t;fillYears();refreshLists();newForm();setMode('month');renderSettings();markClean('clients');markClean('items');applyUIOpts();if(!S.opt.invStart){S.opt.invStart=today();save()}$('#app-ver').textContent='v'+APP_VER+(APP_VER.split('.').length>3?' 테스트':'');$('#upd-ver').textContent='v'+APP_VER;tab('home');if(IS_APP){imeInit().then(()=>setTimeout(imeHangul,1200));showWhatsNew();setTimeout(()=>checkUpdate(false),3000)}})();
 </script>
 </body>
