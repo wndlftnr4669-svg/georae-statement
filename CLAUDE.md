@@ -20,3 +20,7 @@
   자료 폴더(GeoraeStatement), 백업 파일명(거래명세서_날짜.json)·기본 백업폴더(문서/거래명세서 백업)는 기존 사용자 때문에 그대로 둠.
 - **절대 os.execCommand를 background 없이 쓰지 말 것.** Neutralino는 execCommand를 서버 스레드에서 동기로 기다려서, 명령이 멈추면 저장(writeFile)·종료·백업이 전부 멈춤
   (v2.3.0~2.3.1 새 설치 PC에서 바로가기 PowerShell 때문에 실제로 발생). 결과가 필요하면 psRun(spawnProcess + 시간제한) 사용.
+- **큰 자료 저장:** Neutralino 웹소켓은 한 메시지 32MB 넘으면 연결이 끊겨 저장·종료·백업이 전부 멈춤(거래돌이 자료 많은 가게에서 실제 발생).
+  자료 파일 쓰기는 반드시 writeBig(1.5M글자씩 .tmp에 append → 크기 확인 → move) 사용. filesystem.writeFile로 S 전체를 한 번에 쓰지 말 것.
+  연결 끊김은 'serverOffline' 이벤트/시간초과로 감지 → goNetDown(IndexedDB 임시보관 + 빨간 알림, [다시 연결하기]=reload 후 stashCheck로 저장).
+- 테스트판 배포: APP_VER를 4자리(예 2.3.2.1)로 → manifest보다 높아 업데이트 알림 안 뜨고, 헤더에 "테스트" 표시. 다음 정식(2.3.3)은 그보다 높아서 자동으로 넘어감.

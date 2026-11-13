@@ -1,10 +1,12 @@
 {
- "version": "2.3.2",
+ "version": "2.3.3",
  "url": "https://raw.githubusercontent.com/wndlftnr4669-svg/georae-statement/main/update/resources.neu",
- "sha256": "e70f5b725ffc1ead19bb93771d6810984cc047fed4594db81e71f8f19fc4607e",
- "size": 780017,
+ "sha256": "4e96858edcca5e9bbd263dac038fcbdfd4a3a7267a55b0be4069464cbc0b58da",
+ "size": 785474,
  "notes": [
-  "새로 깐 컴퓨터에서 저장·종료·백업이 멈추던 문제 고침"
+  "자료가 많아도 저장·백업·끄기가 멈추지 않게 나눠서 저장",
+  "백업 파일 크기 줄임, 저장 안 될 때 빨간 알림",
+  "품목 저장 시 규격·단가·매입단가 같이 저장할지 설정"
  ],
  "minExe": "6.4.0",
  "download": "https://github.com/wndlftnr4669-svg/georae-statement/raw/main/download/오늘전표.zip"
