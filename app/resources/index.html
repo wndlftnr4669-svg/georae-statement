@@ -199,7 +199,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 
 @media print{
   body{background:#fff}
-  header,main,#pv,#toast,#win-dim,section.win,.modal,.acpop,.unitpop{display:none!important}
+  header,main,#pv,#toast,#netbar,#win-dim,section.win,.modal,.acpop,.unitpop{display:none!important}
   html,body{background:#fff!important}
   #print{display:block}
 }
@@ -493,6 +493,8 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 <details class="card fold"><summary>🥒 품목 · 📦 재고</summary>
   <div style="display:flex;flex-direction:column;gap:12px">
     <label class="chk"><input type="checkbox" id="o-itemauto"> 명세서·매입에 새 품목을 쓰면 [품목]에 자동으로 저장 <span class="muted">(끄면 [품목]에서 직접 저장한 것만 남아요)</span></label>
+    <label class="chk"><input type="checkbox" id="o-specauto"> 품목을 저장할 때 규격도 같이 저장 <span class="muted">(끄면 명세서에 쓴 규격은 그 명세서에만 남고, [품목]에는 안 남아요)</span></label>
+    <label class="chk"><input type="checkbox" id="o-priceauto"> 품목을 저장할 때 단가 · 매입단가도 같이 저장 <span class="muted">(끄면 명세서 · 매입에 쓴 단가는 그 전표에만 남고, [품목]에는 안 남아요)</span></label>
     <label class="chk"><input type="checkbox" id="o-stockon"> 위 메뉴에 [재고] 보이기 <span class="muted">(재고를 안 쓰면 꺼두세요)</span></label>
     <label class="chk"><input type="checkbox" id="o-stockauto"> 매입 작성하면 재고에 자동으로 더하기 <span class="muted">(끄면 [재고]에서 직접 넣은 수량만 계산해요. 판 것은 그대로 빠져요)</span></label>
   </div>
@@ -526,6 +528,7 @@ table.t tfoot td{font-weight:bold;background:#f6f8f6;border-top:2px solid var(--
 </div>
 <div id="print"></div>
 <div id="win-dim" class="hide"></div>
+<div id="netbar" class="hide" style="position:fixed;left:0;right:0;top:0;z-index:9999;background:#c62828;color:#fff;padding:12px 16px;text-align:center;font-size:17px;line-height:1.6;box-shadow:0 3px 12px rgba(0,0,0,.3)"></div>
 <div id="toast"></div>
 
 <script src="js/neutralino.js"></script>
@@ -539,10 +542,43 @@ function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.compan
 const IS_APP=typeof NL_PATH!=='undefined'&&typeof Neutralino!=='undefined';
 let DATA_DIR='',DOCS_DIR='',lastBk='',saving=Promise.resolve();
 const winPath=p=>String(p).replace(/\//g,'\\');
-function save(){IDX=null;BAL=null;RISKC=null;STKC=null;const txt=JSON.stringify(S);
-  if(IS_APP){saving=saving.then(async()=>{try{await Neutralino.filesystem.writeFile(DATA_DIR+'/data.json',txt);const d=today();if(lastBk!==d){await Neutralino.filesystem.writeFile(DATA_DIR+'/backup/'+d+'.json',txt);lastBk=d;autoPcBackup(txt)}}catch(e){alert('자료 저장에 실패했어요.\n프로그램 폴더에 쓰기 권한이 있는지 확인해주세요.\n('+(e.message||e.code||e)+')')}});return}
-  try{localStorage.setItem(KEY,txt)}catch(e){alert('저장에 실패했어요. 브라우저 저장공간을 확인해주세요.')}}
-async function appInit(){Neutralino.init();Neutralino.events.on('windowClose',onCloseReq);
+/* ---------- 저장 ----------
+   Neutralino는 한 번에 32MB 넘는 메시지를 받으면 연결이 끊김 → 저장·종료·백업이 전부 멈춤.
+   그래서 큰 자료는 1.5M글자씩 나눠서 .tmp에 이어 쓰고, 크기 확인 뒤 진짜 파일로 바꿔치기한다. */
+const CHUNK=1500000;
+const tmo=(p,ms,what)=>Promise.race([p,new Promise((_,rj)=>setTimeout(()=>rj({code:'TIMEOUT',message:(what||'저장')+' 시간 초과'}),ms))]);
+async function writeBig(path,txt){const fs=Neutralino.filesystem,tmp=path+'.tmp';let i=0,first=true;
+  do{let j=Math.min(txt.length,i+CHUNK);if(j<txt.length){const c=txt.charCodeAt(j-1);if(c>=0xD800&&c<=0xDBFF)j--}
+    const part=txt.slice(i,j);await tmo(first?fs.writeFile(tmp,part):fs.appendFile(tmp,part),30000);first=false;i=j}while(i<txt.length);
+  const want=new TextEncoder().encode(txt).length,st=await tmo(fs.getStats(tmp),15000);
+  if(st.size!==want)throw{code:'SIZE',message:`저장 크기가 안 맞아요 (${st.size}/${want})`};
+  try{await tmo(fs.move(tmp,path),15000)}catch(e){if(e&&e.code==='TIMEOUT')throw e;try{await fs.remove(path)}catch(x){}await tmo(fs.move(tmp,path),15000)}
+  return path}
+let saveQ=false,saveRun=null,saveErrShown=false;
+function save(){IDX=null;BAL=null;RISKC=null;STKC=null;
+  if(IS_APP){saveQ=true;if(netDown){try{stashPut(JSON.stringify(S)).catch(()=>{})}catch(e){}return}if(!saveRun){saveRun=(async()=>{while(saveQ&&!netDown){saveQ=false;S.opt.savedAt=Date.now();const txt=JSON.stringify(S);
+      try{await writeBig(DATA_DIR+'/data.json',txt);saveErrShown=false;const d=today();if(lastBk!==d){await writeBig(DATA_DIR+'/backup/'+d+'.json',txt);lastBk=d;await autoPcBackup(txt)}}
+      catch(e){if(e&&e.code==='TIMEOUT'){goNetDown('저장이 끝나지 않아요');break}
+        if(!saveErrShown){saveErrShown=true;alert('자료 저장에 실패했어요.\n('+(e&&(e.message||e.code)||e)+')')}}}
+    saveRun=null})();saving=saveRun}return}
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){alert('저장에 실패했어요. 브라우저 저장공간을 확인해주세요.')}}
+
+/* ---------- 3. 연결 끊김 감지 + 임시 보관 ----------
+   끊기면 지금 자료를 이 창의 IndexedDB에 넣어두고, [다시 연결하기](새로고침) 후 되살려서 저장한다. */
+let netDown=false;
+const idb=(mode,fn)=>new Promise((res,rej)=>{const r=indexedDB.open('ojp',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onerror=()=>rej(r.error);
+  r.onsuccess=()=>{const t=r.result.transaction('kv',mode),st=t.objectStore('kv'),q=fn(st);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)}});
+const stashPut=txt=>idb('readwrite',st=>st.put(txt,'stash')),stashGet=()=>idb('readonly',st=>st.get('stash')),stashDel=()=>idb('readwrite',st=>st.delete('stash'));
+async function goNetDown(why){if(netDown)return;netDown=true;let kept=false;try{await stashPut(JSON.stringify(S));kept=true}catch(e){}
+  const bar=$('#netbar');bar.innerHTML=`<b>⚠ 저장이 안 되고 있어요</b> <span>(${esc(why||'프로그램 연결이 끊겼어요')})</span><br>${kept?'지금까지 입력한 자료는 임시로 지켜뒀어요. <b>[다시 연결하기]</b>를 누르면 저장돼요.':'아래 [백업 파일로 받기]로 자료부터 꼭 받아두세요.'}
+    <div class="row" style="margin-top:8px;justify-content:center"><button class="btn" id="nb-re">🔄 다시 연결하기</button><button class="btn sub" id="nb-dl">💾 백업 파일로 받기</button></div>`;
+  bar.classList.remove('hide');$('#nb-re').onclick=()=>location.reload();$('#nb-dl').onclick=()=>{bkDownload();toast('[다운로드] 폴더에 받았어요')}}
+async function stashCheck(){let t=null;try{t=await stashGet()}catch(e){return}if(!t)return;
+  try{const d=JSON.parse(t);if(d&&d.company&&(d.opt&&d.opt.savedAt||0)>=(S.opt.savedAt||0)){const b=blank();S=freezeAmts(Object.assign(b,d,{opt:Object.assign(b.opt,d.opt||{})}));IDX=null;save();await saving;
+    if(!netDown){await stashDel();toast('끊겼던 동안의 자료를 저장했어요 ✅')}return}}catch(e){}
+  try{await stashDel()}catch(e){}}
+
+async function appInit(){Neutralino.init();Neutralino.events.on('windowClose',onCloseReq);Neutralino.events.on('serverOffline',()=>goNetDown('프로그램 연결이 끊겼어요'));
   try{DATA_DIR=(await Neutralino.os.getPath('data')).replace(/[\\/]+$/,'')+'/GeoraeStatement'}catch(e){DATA_DIR=NL_PATH+'/data'}
   try{DOCS_DIR=(await Neutralino.os.getPath('documents')).replace(/[\\/]+$/,'')}catch(e){DOCS_DIR=''}
   for(const d of [DATA_DIR,DATA_DIR+'/backup']){try{await Neutralino.filesystem.createDirectory(d)}catch(e){}}
@@ -678,9 +714,10 @@ const imeDone={};
 document.addEventListener('focusin',e=>{const t=e.target;if(curTab==='home'||imeDone[curTab]||!t.matches||!t.matches('input:not([data-num]):not([type=date]):not([type=month]):not([type=checkbox]):not([type=file])'))return;imeDone[curTab]=1;imeHangul()});
 
 /* ---------- 탭 ---------- */
-const APP_VER='2.3.2';
+const APP_VER='2.3.2.1';
 const NOTICES=[
  {pin:true,title:'자료 저장 · 백업 안내',date:'',items:['입력한 자료는 자동으로 저장되고, 하루 한 번 자동 백업돼요 (최근 10일치).','컴퓨터를 바꿀 땐 [설정] → 백업 → [백업 파일 받기]로 받은 파일을 새 컴퓨터에서 [백업 파일 불러오기] 하면 돼요.','A5 인쇄가 밀리면 [설정] → 백업의 위치 보정과 [테스트 인쇄]로 맞춰주세요.']},
+ {ver:'2.3.2.1',date:'2026-11-13',title:'테스트: 큰 자료 저장',items:['자료가 많아도 저장 · 백업 · 끄기가 멈추지 않게 나눠서 저장해요.','[설정] → [품목 · 재고]에서 규격 · 단가 · 매입단가를 품목에 같이 저장할지 고를 수 있어요.','백업 파일 크기를 30%쯤 줄였어요.','혹시 저장이 안 되면 위에 빨간 알림이 뜨고, [다시 연결하기]로 자료를 지켜요.']},
  {ver:'2.3.2',date:'2026-11-11',title:'저장 · 종료 멈춤 고침',items:['새로 깐 컴퓨터에서 저장 · 종료 · 백업 버튼이 멈추던 문제를 고쳤어요.','(바탕화면 바로가기를 만드는 동안 프로그램 전체가 기다리던 게 원인이었어요)']},
  {ver:'2.3.1',date:'2026-11-09',title:'월 총합 · 품목/재고 설정',items:['[거래 내역]에서 거래처를 고르면 그 달(기간) 총합이 크게 나와요. 지난 잔액 + 이번 달 매출 − 입금 = 남은 잔액.','[월별 합계] 보기 버튼이 생겼어요.','[설정] → [품목 · 재고]에서 새 품목 자동 저장을 켜고 끌 수 있어요. (기본은 켜짐)','[재고] 메뉴를 숨길 수 있고, 매입하면 재고에 자동으로 더할지도 고를 수 있어요.']},
  {ver:'2.3.0',date:'2026-11-06',title:'이름이 "오늘전표"로 바뀌었어요',items:['프로그램 이름을 "오늘전표"로 바꾸고 새 아이콘을 달았어요.','바탕화면에 새 아이콘의 "오늘전표" 바로가기가 생겨요. 예전 바로가기가 있으면 그걸 바꿔줘요.','자료 · 백업 · 사용법은 전부 그대로예요.']},
@@ -745,7 +782,7 @@ function formSig(t){const v=id=>{const el=$(id);return el?(el.type==='checkbox'?
   if(t==='write')return JSON.stringify([v('#f-client'),v('#f-tax'),v('#f-paid'),readRows()]);
   if(t==='clients')return JSON.stringify(CF.map(f=>v('#c-'+f)));
   if(t==='items')return JSON.stringify([...IF.map(f=>v('#i-'+f)),v('#i-track')]);
-  if(t==='settings')return JSON.stringify([...SF.map(f=>v('#s-'+f)),...['#o-paper','#o-pmargin','#o-copies','#o-a5dir','#o-offx','#o-offy','#o-scale','#o-bal','#o-mono','#o-tax','#o-round','#o-net','#o-ime','#o-itemauto','#o-stockon','#o-stockauto','#o-showtax','#o-risk','#o-ramt','#o-rdays'].map(v)]);
+  if(t==='settings')return JSON.stringify([...SF.map(f=>v('#s-'+f)),...['#o-paper','#o-pmargin','#o-copies','#o-a5dir','#o-offx','#o-offy','#o-scale','#o-bal','#o-mono','#o-tax','#o-round','#o-net','#o-ime','#o-itemauto','#o-specauto','#o-priceauto','#o-stockon','#o-stockauto','#o-showtax','#o-risk','#o-ramt','#o-rdays'].map(v)]);
   return ''}
 const base={};
 const markClean=t=>{base[t]=formSig(t)};
@@ -767,7 +804,9 @@ let closing=false;
 async function onCloseReq(){if(closing||asking)return;asking=true;
   try{let ok;if(isDirty(curTab))ok=await resolveDirty(curTab,'끄기');
     else ok=(await ask('프로그램을 끌까요?',[{label:'끄기',val:'ok'},{label:'취소',val:'cancel',cls:'sub'}]))==='ok';
-    if(!ok)return;closing=true;try{await Promise.race([saving,new Promise(r=>setTimeout(r,6000))])}catch(e){}imeStop();Neutralino.app.exit()}finally{asking=false}}
+    if(!ok)return;closing=true;let b=saveRun?busy('저장하는 중이에요… 잠깐만요'):null;let done=false;try{await Promise.race([saving.then(()=>done=true),new Promise(r=>setTimeout(r,60000))])}catch(e){}if(b)b.close();
+    if(!done||netDown){closing=false;if((await ask('저장이 아직 안 끝났어요.<br>지금 끄면 마지막에 입력한 게 빠질 수 있어요.',[{label:'기다릴게요',val:'wait'},{label:'그래도 끄기',val:'off',cls:'del'}]))!=='off')return;closing=true}
+    imeStop();Neutralino.app.exit()}finally{asking=false}}
 window.addEventListener('beforeunload',e=>{if(!IS_APP&&isDirty(curTab)){e.preventDefault();e.returnValue=''}});
 function refreshLists(){$('#dl-clients').innerHTML=S.clients.map(c=>`<option value="${esc(c.name)}">`).join('');$('#dl-items').innerHTML=S.items.map(i=>`<option value="${esc(i.name)}">${esc(i.spec||'')}</option>`).join('');$('#need-setup').classList.toggle('hide',!!S.company.name)}
 
@@ -861,8 +900,8 @@ function saveInv(andPrint){const inv=formInv();
   let cl=S.clients.find(c=>c.name===inv.clientName);
   if(!cl){cl={id:uid(),name:inv.clientName,bizno:'',ceo:'',tel:'',addr:'',opening:0,memo:''};S.clients.push(cl)}
   inv.clientId=cl.id;delete inv.clientName;
-  inv.rows.forEach(r=>{if(!r.name)return;let it=S.items.find(i=>i.name===r.name);if(!it){if(S.opt.itemAuto===false)return;it={id:uid(),name:r.name,spec:r.spec,unit:r.unit||'',price:inv.kind==='buy'?0:num(r.price)};S.items.push(it)}else{if(r.unit&&!(it.subs||[]).some(s=>s.u===r.unit))it.unit=r.unit;if(r.spec)it.spec=r.spec}
-    if(inv.kind==='buy'){if(S.opt.stockAuto!==false)it.track=true;if(r.price!==''&&(!r.unit||r.unit===it.unit))it.cost=num(r.price)}});
+  inv.rows.forEach(r=>{if(!r.name)return;let it=S.items.find(i=>i.name===r.name);if(!it){if(S.opt.itemAuto===false)return;it={id:uid(),name:r.name,spec:S.opt.specAuto===false?'':r.spec,unit:r.unit||'',price:inv.kind==='buy'||S.opt.priceAuto===false?0:num(r.price)};S.items.push(it)}else{if(r.unit&&!(it.subs||[]).some(s=>s.u===r.unit))it.unit=r.unit;if(r.spec&&S.opt.specAuto!==false)it.spec=r.spec}
+    if(inv.kind==='buy'){if(S.opt.stockAuto!==false)it.track=true;if(r.price!==''&&S.opt.priceAuto!==false&&(!r.unit||r.unit===it.unit))it.cost=num(r.price)}});
   if(editing){const k=S.invoices.findIndex(x=>x.id===editing),old=S.invoices[k];inv.id=editing;if(kindOf(old)!==inv.kind)inv.no=nextNo(inv.date,inv.kind);S.invoices[k]=inv}else{inv.id=uid();inv.no=nextNo(inv.date,inv.kind);S.invoices.push(inv)}
   save();refreshLists();let lowTxt='';if(inv.kind==='sale'&&S.opt.stockOn!==false){const M=stockMap();lowTxt=[...new Set(inv.rows.map(r=>r.name))].filter(n=>M[n]&&M[n].shown&&M[n].qty<0).map(n=>`${n} ${fq(Math.round(M[n].qty*100)/100)}`).join(', ')}
   toast((inv.kind==='buy'?'매입 저장했어요':'저장했어요')+' · No. '+inv.no+(lowTxt?` · ⚠ 재고 부족: ${lowTxt}`:''));if(andPrint)printInvs([inv]);newForm(true);return true}
@@ -1078,9 +1117,9 @@ const SF=['name','bizno','ceo','tel','addr','biz','kind','bank'];
 function readPrintOpt(){S.opt.paper=$('#o-paper').value;S.opt.pmargin=$('#o-pmargin').value;S.opt.copies=$('#o-copies').value;S.opt.a5dir=$('#o-a5dir').value;S.opt.offX=num($('#o-offx').value);S.opt.offY=num($('#o-offy').value);S.opt.scale=Math.min(150,Math.max(30,num($('#o-scale').value)||100))}
 function sampleInv(){return{id:'_test',no:'테스트-001',date:today(),clientId:null,clientName:'테스트 거래처',taxMode:S.opt.defTax||'exempt',paid:0,created:Date.now(),rows:[{name:'백다다기오이',spec:'50개',qty:'10',unit:'박스',price:'23000',memo:'테스트'},{name:'애호박',spec:'20개',qty:'5',unit:'박스',price:'18500',memo:''},{name:'가지',spec:'',qty:'8',unit:'Kg',price:'3000',memo:''}]}}
 function applyStockVis(){const on=S.opt.stockOn!==false;document.querySelectorAll('nav [data-t="stock"],#tile-stock').forEach(e=>e.classList.toggle('hide',!on))}
-function renderSettings(){renderUnits();SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-itemauto').checked=S.opt.itemAuto!==false;$('#o-stockon').checked=S.opt.stockOn!==false;$('#o-stockauto').checked=S.opt.stockAuto!==false;$('#o-showtax').checked=!!S.opt.showTax;$('#o-risk').checked=S.opt.riskOn!==false;$('#o-ramt').value=fmt(S.opt.riskAmt??1000000);$('#o-rdays').value=S.opt.riskDays??30;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
+function renderSettings(){renderUnits();SF.forEach(f=>$('#s-'+f).value=S.company[f]||'');$('#o-bal').checked=S.opt.showBal;$('#o-mono').checked=S.opt.mono;$('#o-tax').value=S.opt.defTax;$('#o-round').value=S.opt.round||'none';$('#o-net').checked=!!S.opt.netBal;$('#o-ime').checked=S.opt.imeKo!==false;$('#o-itemauto').checked=S.opt.itemAuto!==false;$('#o-specauto').checked=S.opt.specAuto!==false;$('#o-priceauto').checked=S.opt.priceAuto!==false;$('#o-stockon').checked=S.opt.stockOn!==false;$('#o-stockauto').checked=S.opt.stockAuto!==false;$('#o-showtax').checked=!!S.opt.showTax;$('#o-risk').checked=S.opt.riskOn!==false;$('#o-ramt').value=fmt(S.opt.riskAmt??1000000);$('#o-rdays').value=S.opt.riskDays??30;$('#o-paper').value=S.opt.paper||'a5';$('#o-pmargin').value=S.opt.pmargin||'auto';$('#o-copies').value=S.opt.copies||'both';$('#o-a5dir').value=S.opt.a5dir||'portrait';$('#o-offx').value=num(S.opt.offX);$('#o-offy').value=num(S.opt.offY);$('#o-scale').value=num(S.opt.scale)||100;markClean('settings');
   $('#bk-info').textContent=(IS_APP?`자료 위치: ${winPath(DATA_DIR)} (매일 자동백업은 backup 폴더) · `:'')+`현재 자료: 명세서 ${S.invoices.length}건 · 거래처 ${S.clients.length}곳 · 품목 ${S.items.length}개 · 입금 ${S.payments.length}건`}
-function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.imeKo=$('#o-ime').checked;S.opt.itemAuto=$('#o-itemauto').checked;S.opt.stockOn=$('#o-stockon').checked;S.opt.stockAuto=$('#o-stockauto').checked;applyStockVis();S.opt.showTax=$('#o-showtax').checked;S.opt.riskOn=$('#o-risk').checked;S.opt.riskAmt=num($('#o-ramt').value);S.opt.riskDays=num($('#o-rdays').value);if(S.opt.imeKo)imeInit();else imeStop();S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
+function saveSettings(){SF.forEach(f=>S.company[f]=$('#s-'+f).value.trim());S.opt.showBal=$('#o-bal').checked;S.opt.mono=$('#o-mono').checked;S.opt.defTax=$('#o-tax').value;S.opt.round=$('#o-round').value;S.opt.netBal=$('#o-net').checked;S.opt.imeKo=$('#o-ime').checked;S.opt.itemAuto=$('#o-itemauto').checked;S.opt.specAuto=$('#o-specauto').checked;S.opt.priceAuto=$('#o-priceauto').checked;S.opt.stockOn=$('#o-stockon').checked;S.opt.stockAuto=$('#o-stockauto').checked;applyStockVis();S.opt.showTax=$('#o-showtax').checked;S.opt.riskOn=$('#o-risk').checked;S.opt.riskAmt=num($('#o-ramt').value);S.opt.riskDays=num($('#o-rdays').value);if(S.opt.imeKo)imeInit();else imeStop();S.opt.paper=$('#o-paper').value;readPrintOpt();save();refreshLists();toast('설정 저장했어요');if(!editing&&!readRows().length){$('#f-tax').value=S.opt.defTax;markClean('write')}markClean('settings');return true}
 $('#s-save').onclick=saveSettings;
 function setUnits(L){S.opt.units=L;save();renderUnits();toast('단위를 저장했어요')}
 function renderUnits(){const L=UNITS_();$('#u-list').innerHTML=L.map((u,k)=>`<div class="urow"><span class="un">${k<9?k+1:'·'}</span><b>${esc(u)}</b><button class="btn sub sm" data-u="up" data-k="${k}" ${k===0?'disabled':''} title="위로">▲</button><button class="btn sub sm" data-u="down" data-k="${k}" ${k===L.length-1?'disabled':''} title="아래로">▼</button><button class="btn del sm" data-u="del" data-k="${k}">삭제</button></div>`).join('')}
@@ -1093,11 +1132,11 @@ $('#u-reset').onclick=()=>{if(confirm('단위 목록을 처음대로(박스·Kg�
 function applyUIOpts(){const w=$('#f-tax-wrap');if(w)w.classList.toggle('hide',!S.opt.showTax&&S.opt.defTax!=='add10')}
 document.querySelector('section[data-t="settings"]').addEventListener('change',e=>{const id=e.target.id||'';if(/^(s|o)-/.test(id)){saveSettings();applyUIOpts()}});
 $('#o-test').onclick=()=>{readPrintOpt();save();printInvs([sampleInv()])};
-$('#bk-down').onclick=async()=>{if(IS_APP){try{const p=await Neutralino.os.showSaveDialog('백업 파일 저장',{defaultPath:`거래명세서_백업_${today()}.json`,filters:[{name:'백업 파일',extensions:['json']}]});if(!p)return;await Neutralino.filesystem.writeFile(/\.json$/i.test(p)?p:p+'.json',JSON.stringify(S,null,1));toast('백업 파일을 저장했어요')}catch(e){alert('백업 저장에 실패했어요.')}return}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download=`거래명세서_백업_${today()}.json`;document.body.appendChild(a);a.click();a.remove();toast('백업 파일을 받았어요')};
+$('#bk-down').onclick=async()=>{if(IS_APP){try{const p=await Neutralino.os.showSaveDialog('백업 파일 저장',{defaultPath:`거래명세서_백업_${today()}.json`,filters:[{name:'백업 파일',extensions:['json']}]});if(!p)return;await writeBig(/\.json$/i.test(p)?p:p+'.json',bkText());toast('백업 파일을 저장했어요')}catch(e){alert('백업 저장에 실패했어요.')}return}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download=`거래명세서_백업_${today()}.json`;document.body.appendChild(a);a.click();a.remove();toast('백업 파일을 받았어요')};
 async function restoreText(txt){let d;try{d=JSON.parse(txt);if(!d.company||!Array.isArray(d.invoices))throw 0}catch(x){alert('올바른 백업 파일이 아니에요.');return}
   const when=d.opt&&d.opt.savedAt?` (${new Date(d.opt.savedAt).toLocaleString('ko-KR')} 저장)`:'';
   if(!confirm(`이 백업 파일${when}로 되돌릴까요?\n명세서 ${d.invoices.length}건 · 거래처 ${(d.clients||[]).length}곳\n\n지금 자료는 이 파일 내용으로 바뀌어요.`))return;
-  if(IS_APP){try{await Neutralino.filesystem.writeFile(DATA_DIR+'/backup/되살리기전_'+today()+'_'+Date.now()+'.json',JSON.stringify(S))}catch(e){}}
+  if(IS_APP){try{await writeBig(DATA_DIR+'/backup/되살리기전_'+today()+'_'+Date.now()+'.json',JSON.stringify(S))}catch(e){}}
   const keep={bkDir:S.opt.bkDir,bkLast:S.opt.bkLast,usbLast:S.opt.usbLast,usbPath:S.opt.usbPath},b=blank();S=freezeAmts(Object.assign(b,d,{opt:Object.assign(b.opt,d.opt||{},keep)}));save();refreshLists();renderSettings();newForm();if(curTab==='backup')renderBackup();toast('백업으로 되살렸어요')}
 $('#bk-up').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{restoreText(r.result);e.target.value=''};r.readAsText(f)};
 $('#bk-restore').onclick=async()=>{if(!IS_APP){$('#bk-up').click();return}
@@ -1118,8 +1157,8 @@ $s=$w.CreateShortcut($new);$s.TargetPath=$exe;$s.WorkingDirectory=Split-Path $ex
 const bkDir=()=>S.opt.bkDir||(DOCS_DIR?DOCS_DIR+'/거래명세서 백업':DATA_DIR+'/backup');
 const pad2=n=>String(n).padStart(2,'0');
 const stamp=()=>{const d=new Date();return`${today()}_${pad2(d.getHours())}${pad2(d.getMinutes())}`};
-const bkText=()=>{S.opt.savedAt=Date.now();return JSON.stringify(S,null,1)};
-async function writeBk(dir,name,txt){dir=String(dir).replace(/[\\/]+$/,'');try{await Neutralino.filesystem.createDirectory(dir)}catch(e){}await Neutralino.filesystem.writeFile(dir+'/'+name,txt);return dir+'/'+name}
+const bkText=()=>{S.opt.savedAt=Date.now();return JSON.stringify(S)};
+async function writeBk(dir,name,txt){dir=String(dir).replace(/[\\/]+$/,'');try{await tmo(Neutralino.filesystem.createDirectory(dir),15000)}catch(e){if(e&&e.code==='TIMEOUT')throw e}await writeBig(dir+'/'+name,txt);return dir+'/'+name}
 async function autoPcBackup(txt){try{const dir=bkDir();await writeBk(dir,`거래명세서_${today()}.json`,txt);S.opt.bkLast=Date.now();
     const f=(await Neutralino.filesystem.readDirectory(dir)).map(x=>x.entry).filter(n=>/^거래명세서_\d{4}-\d\d-\d\d\.json$/.test(n)).sort();for(const o of f.slice(0,Math.max(0,f.length-30)))await Neutralino.filesystem.remove(dir+'/'+o)}catch(e){}}
 const ago=t=>{if(!t)return'<span style="color:var(--warn)">아직 안 했어요</span>';const d=Math.floor((Date.now()-t)/864e5),s=new Date(t).toLocaleString('ko-KR',{month:'long',day:'numeric',hour:'numeric',minute:'2-digit'});return`${s} <span class="muted">(${d<1?'오늘':d+'일 전'})</span>`};
@@ -1229,7 +1268,7 @@ $('#gd-import').onclick=async()=>{if(asking)return;asking=true;let b=null;
     asking=false;const v=await ask(msg,btns);asking=true;if(v==='cancel')return;
     if(v==='replace'&&has&&(await ask('지금 자료를 지우고 거래돌이 자료로 바꿀까요?<br><span class="muted">혹시 몰라서 지금 자료는 백업 폴더에 따로 저장해둘게요.</span>',[{label:'네, 바꿀게요',val:'ok',cls:'del'},{label:'취소',val:'cancel',cls:'sub'}]))!=='ok')return;
     b=busy('자료를 옮기는 중이에요…');await tick();
-    if(IS_APP&&has){try{await Neutralino.filesystem.writeFile(DATA_DIR+'/backup/가져오기전_'+today()+'_'+Date.now()+'.json',JSON.stringify(S))}catch(e){}}
+    if(IS_APP&&has){try{await writeBig(DATA_DIR+'/backup/가져오기전_'+today()+'_'+Date.now()+'.json',JSON.stringify(S))}catch(e){}}
     const r=gdApply(G,v,window._gdco);save();refreshLists();fillYears();renderSettings();b.close();b=null;
     await ask(`거래돌이 자료를 가져왔어요! ✅<br><br>새 거래처 ${fmt(r.nC)}곳 · 새 품목 ${fmt(r.nI)}개<br>새 명세서·매입 ${fmt(r.nInv)}건${r.uInv?` · 갱신 ${fmt(r.uInv)}건`:''}<br>새 입금·지급 ${fmt(r.nP)}건<br><br><span class="muted">[거래 내역]과 [거래처]에서 확인해보세요.</span>`,[{label:'확인',val:'ok'}])}
   finally{if(b)b.close();asking=false}};
@@ -1354,8 +1393,8 @@ $('#st-xlsx').onclick=()=>{const M=stockMap(),rows=Object.values(M).filter(o=>$(
   inp.addEventListener('keydown',e=>acKey(e))});
 
 /* ---------- 시작 ---------- */
-(async function(){if(IS_APP){await appInit();setTimeout(makeShortcut,3000);{const t=S.opt.bkLast;if(!t||new Date(t).toDateString()!==new Date().toDateString())autoPcBackup(JSON.stringify(S)).then(()=>save())}$('#bk-open').classList.remove('hide');setTimeout(bkDue,500);applyStockVis();$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
-  const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-from').value=t.slice(0,8)+'01';$('#l-to').value=t;fillYears();refreshLists();newForm();setMode('month');renderSettings();markClean('clients');markClean('items');applyUIOpts();if(!S.opt.invStart){S.opt.invStart=today();save()}$('#app-ver').textContent='v'+APP_VER;$('#upd-ver').textContent='v'+APP_VER;tab('home');if(IS_APP){imeInit().then(()=>setTimeout(imeHangul,1200));showWhatsNew();setTimeout(()=>checkUpdate(false),3000)}})();
+(async function(){if(IS_APP){await appInit();await stashCheck();setTimeout(makeShortcut,3000);{const t=S.opt.bkLast;if(!t||new Date(t).toDateString()!==new Date().toDateString())autoPcBackup(JSON.stringify(S)).then(()=>save())}$('#bk-open').classList.remove('hide');setTimeout(bkDue,500);applyStockVis();$('#bk-desc').textContent='자료는 이 컴퓨터의 사용자 폴더(아래 자료 위치)에 저장되고, 하루 한 번 backup 폴더에 자동으로 복사돼요(최근 10일치). 프로그램 파일을 지우거나 옮겨도 자료는 그대로예요. 다른 컴퓨터로 옮길 땐 백업 파일을 받아서 새 컴퓨터에서 불러오면 돼요.'}
+  const t=today();$('#l-day').value=t;$('#l-mon').value=t.slice(0,7);$('#l-from').value=t.slice(0,8)+'01';$('#l-to').value=t;fillYears();refreshLists();newForm();setMode('month');renderSettings();markClean('clients');markClean('items');applyUIOpts();if(!S.opt.invStart){S.opt.invStart=today();save()}$('#app-ver').textContent='v'+APP_VER+(APP_VER.split('.').length>3?' 테스트':'');$('#upd-ver').textContent='v'+APP_VER;tab('home');if(IS_APP){imeInit().then(()=>setTimeout(imeHangul,1200));showWhatsNew();setTimeout(()=>checkUpdate(false),3000)}})();
 </script>
 </body>
 </html>
