@@ -602,6 +602,16 @@ function cloud(st,msg){const e=$('#cloud');if(!e)return;e.classList.remove('hide
 const ST=()=>SB.storage.from('stores');
 async function remoteStamp(){const{data,error}=await ST().list(UID,{search:'data.json.gz'});if(error)throw error;const f=(data||[]).find(x=>x.name==='data.json.gz');return f?String(f.updated_at||f.created_at||'x'):''}
 async function remoteText(){const{data,error}=await ST().download(UID+'/data.json.gz?t='+Date.now());if(error)throw error;return await gunzipText(data)}
+/* 다른 기기와 자료 합치기 (3-way): 마지막으로 맞춘 자료(base) 기준으로 이 기기에서 바뀐 건 내 것, 나머지는 서버 것 */
+let webBase='';
+function webMerge(base,mine,theirs){const J=JSON.stringify,out={};
+  for(const k of new Set([...Object.keys(theirs),...Object.keys(mine)])){
+    if(Array.isArray(mine[k])||Array.isArray(theirs[k])){const B=new Map((base[k]||[]).map(x=>[x.id,x])),M=new Map((mine[k]||[]).map(x=>[x.id,x])),T=new Map((theirs[k]||[]).map(x=>[x.id,x])),res=[];
+      const pick=id=>{const b=B.get(id),m=M.get(id);return J(m)!==J(b)?m:T.get(id)};
+      for(const id of T.keys()){const v=pick(id);if(v)res.push(v)}for(const id of M.keys())if(!T.has(id)){const v=pick(id);if(v)res.push(v)}out[k]=res}
+    else if(k==='opt'){const strip=o=>{const c=Object.assign({},o||{});delete c.savedAt;delete c.bkLast;return J(c)};out[k]=strip(mine[k])!==strip(base[k])?Object.assign({},theirs[k],mine[k]):theirs[k]}
+    else out[k]=J(mine[k])!==J(base[k])?mine[k]:theirs[k]}
+  return out}
 const cacheKey=()=>'web_'+UID,cacheSet=v=>idb('readwrite',st=>st.put(v,cacheKey())),cacheGet=()=>idb('readonly',st=>st.get(cacheKey()));
 function webSave(){webDirty=true;cloud('wait','☁ 저장 대기…');clearTimeout(webTimer);webTimer=setTimeout(webFlush,1500)}
 async function webFlush(){clearTimeout(webTimer);if(webBusy)return webBusy.then(()=>{if(webDirty)return webFlush()});
@@ -610,17 +620,34 @@ async function webFlush(){clearTimeout(webTimer);if(webBusy)return webBusy.then(
     if(!navigator.onLine){webDirty=true;cloud('err','⚠ 인터넷 끊김 · 이 컴퓨터에 임시 보관 중');break}
     cloud('busy','☁ 저장 중…');
     try{const now=await remoteStamp();
-      if(webRemoteAt&&now&&now!==webRemoteAt){const c=await ask('다른 컴퓨터(또는 다른 창)에서 자료가 바뀌었어요.<br>어느 쪽을 쓸까요?',[{label:'그쪽 자료 불러오기',val:'theirs'},{label:'지금 이 화면 자료로 저장',val:'mine',cls:'sub'}]);
-        if(c!=='mine'){await webPullReload();return}}
-      const blob=await gzBlob(txt);const r=await ST().upload(UID+'/data.json.gz',blob,{upsert:true,contentType:'application/gzip',cacheControl:'0'});if(r.error)throw r.error;
+      let up=txt;const prevBase=webBase;
+      if(webRemoteAt&&now&&now!==webRemoteAt){cloud('busy','☁ 다른 기기 자료와 합치는 중…');const theirs=JSON.parse(await remoteText()),base=webBase?JSON.parse(webBase):theirs;
+        const mg=webMerge(base,JSON.parse(txt),theirs),bl=blank();S=freezeAmts(Object.assign(bl,mg,{opt:Object.assign(bl.opt,mg.opt||{})}));IDX=null;BAL=null;RISKC=null;STKC=null;
+        S.opt.savedAt=Date.now();up=JSON.stringify(S);try{refreshLists();if(!isDirty(curTab))({list:renderList,clients:renderClients,items:()=>{renderItems();renderItemSearch()},stock:renderStock}[curTab]||(()=>{}))()}catch(e){}}
+      const blob=await gzBlob(up);const r=await ST().upload(UID+'/data.json.gz',blob,{upsert:true,contentType:'application/gzip',cacheControl:'0'});if(r.error)throw r.error;
       const d=today();if(webLastBk!==d){const r2=await ST().upload(`${UID}/backup/${d}.json.gz`,blob,{upsert:true,contentType:'application/gzip'});if(!r2.error){webLastBk=d;webPrune()}}
-      webRemoteAt=await remoteStamp();S.opt.bkLast=Date.now();
-      if(!webDirty){try{await cacheSet({txt,dirty:false,at})}catch(e){}}
+      webRemoteAt=await remoteStamp();webBase=up;S.opt.bkLast=Date.now();
+      { /* 거의 동시에 다른 기기도 저장했는지 5초 뒤 확인 → 그랬다면 공통 기준(prevBase)으로 다시 합쳐서 저장 */
+        const mine=webRemoteAt,pb=prevBase;setTimeout(async()=>{try{if(webRemoteAt!==mine||webDirty||webBusy)return;const now2=await remoteStamp();
+          if(now2&&now2!==mine&&webRemoteAt===mine&&!webDirty&&!webBusy){webBase=pb||webBase;webDirty=true;webFlush()}}catch(e){}},5000)}
+      if(!webDirty){try{await cacheSet({txt:up,dirty:false,at})}catch(e){}}
       cloud('ok','☁ 저장됨')}
     catch(e){webDirty=true;cloud('err','⚠ 저장 안 됨 · 다시 시도 중');console.warn('save',e);setTimeout(()=>{if(webDirty)webFlush()},10000);break}}})();
   try{await webBusy}finally{webBusy=null}}
 async function webPrune(){try{const{data}=await ST().list(UID+'/backup',{limit:1000});const f=(data||[]).map(x=>x.name).filter(n=>/^\d{4}-\d\d-\d\d\.json\.gz$/.test(n)).sort();
   const old=f.slice(0,Math.max(0,f.length-30)).map(n=>`${UID}/backup/${n}`);if(old.length)await ST().remove(old)}catch(e){}}
+/* 몇 초마다(15초) + 화면으로 돌아왔을 때: 서버 자료가 바뀌었으면 입력 중이 아닐 때 그 자리에서 새로 그림 */
+let webPolling=false;
+async function webPoll(){if(webPolling||document.hidden||webDirty||webBusy||!UID||!navigator.onLine)return;webPolling=true;
+  try{const now=await remoteStamp();if(!now||now===webRemoteAt)return;
+    const a=document.activeElement,typing=a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&String(a.value||'').trim()!=='';
+    if(document.querySelector('.modal')||$('#login')||isDirty(curTab)||typing){cloud('wait','☁ 새 자료 있음 · 입력 끝나면 반영');return}
+    const txt=await remoteText();if(webDirty||webBusy)return;const d=JSON.parse(txt);if(!d||!d.company)return;
+    const bl=blank();S=freezeAmts(Object.assign(bl,d,{opt:Object.assign(bl.opt,d.opt||{})}));IDX=null;BAL=null;RISKC=null;STKC=null;webRemoteAt=now;webBase=txt;
+    try{await cacheSet({txt,dirty:false,at:(d.opt&&d.opt.savedAt)||Date.now()})}catch(e){}
+    try{refreshLists();renderHome();({list:renderList,clients:renderClients,items:()=>{renderItems();renderItemSearch()},stock:renderStock,backup:renderBackup}[curTab]||(()=>{}))()}catch(e){console.warn(e)}
+    cloud('ok','☁ 저장됨 · 방금 새로 받음');toast('다른 곳에서 바뀐 자료를 반영했어요 🔄')}
+  catch(e){}finally{webPolling=false}}
 async function webPullReload(){const b=busy('다른 곳에서 바뀐 자료를 불러오는 중이에요…');try{const t=await remoteText();await cacheSet({txt:t,dirty:false,at:Date.now()})}catch(e){}location.reload()}
 function loginScreen(){return new Promise(res=>{const w=document.createElement('div');w.id='login';
   w.innerHTML=`<div class="lbox"><img src="icons/appIcon.png" alt="" style="width:72px;height:72px;border-radius:16px"><h1>오늘전표</h1><p>휴대폰 번호랑 비밀번호로 들어와요</p>
@@ -646,7 +673,7 @@ async function webInit(){SB=window.supabase.createClient(WEBCFG.url,WEBCFG.key,{
   UID=session.user.id;WEB_ID=String(session.user.email||'').replace(ID_DOMAIN,'').replace(/^u/,'');
   const b=busy('자료를 불러오는 중이에요…');
   try{let cache=null;try{cache=await cacheGet()}catch(e){}
-    webRemoteAt=await remoteStamp();const R=webRemoteAt?JSON.parse(await remoteText()):null;
+    webRemoteAt=await remoteStamp();const Rt=webRemoteAt?await remoteText():null,R=Rt?JSON.parse(Rt):null;webBase=Rt||'';
     let use=R,push=false;
     if(cache&&cache.dirty&&(!R||cache.at>((R.opt&&R.opt.savedAt)||0))){use=JSON.parse(cache.txt);push=true}
     else if(!R&&cache){use=JSON.parse(cache.txt);push=true}
@@ -657,8 +684,8 @@ async function webInit(){SB=window.supabase.createClient(WEBCFG.url,WEBCFG.key,{
   b.close();
   $('#cloud').onclick=()=>{if(webDirty||$('#cloud').dataset.st==='err')webFlush();else toast('자료는 서버에 자동으로 저장돼요 ☁')};
   window.addEventListener('beforeunload',e=>{if(webDirty||webBusy){webFlush();e.preventDefault();e.returnValue=''}});
-  document.addEventListener('visibilitychange',async()=>{if(document.hidden){if(webDirty)webFlush();return}
-    if(!webDirty&&!webBusy){try{const now=await remoteStamp();if(webRemoteAt&&now&&now!==webRemoteAt&&!isDirty(curTab)){toast('다른 곳에서 바뀐 자료를 불러올게요');webPullReload()}}catch(e){}}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){if(webDirty)webFlush();return}webPoll()});
+  setInterval(webPoll,15000);
   window.addEventListener('online',()=>{if(webDirty)webFlush()});window.addEventListener('offline',()=>cloud('err','⚠ 인터넷 끊김 · 이 컴퓨터에 임시 보관 중'))}
 async function webLogout(){if(!(await ask(`로그아웃할까요?<br><span class="muted">(${esc(WEB_ID)})</span>`,[{label:'로그아웃',val:1},{label:'취소',val:0,cls:'sub'}])))return;
   if(webDirty||webBusy){const b=busy('저장하는 중이에요…');try{await webFlush()}catch(e){}b.close()}await SB.auth.signOut();location.reload()}

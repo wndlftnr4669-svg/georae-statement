@@ -26,4 +26,5 @@
 - 테스트판 배포: APP_VER를 4자리(예 2.3.2.1)로 → manifest보다 높아 업데이트 알림 안 뜨고, 헤더에 "테스트" 표시. 다음 정식(2.3.3)은 그보다 높아서 자동으로 넘어감.
 - **웹 버전(테스트, web-test 브랜치):** 같은 index.html을 `tools/build_web.sh`로 docs/에 복사(neutralino.js 대신 supabase.js + config.js 넣음) → GitHub Pages(web-test 브랜치 /docs).
   window.OJP_WEB={url,key}가 있으면 IS_WEB. 로그인=휴대폰번호→`u<번호>@ojeonpyo.app` 이메일(메일 확인 꺼둠). 자료는 storage 버킷 stores/<uid>/data.json.gz(gzip 통째),
-  하루 1번 backup/날짜.json.gz(30일). IndexedDB에 먼저 쓰고(dirty) 업로드 성공하면 해제. 업로드 전 list로 updated_at 비교해 다른 기기 변경 감지. 설정 SQL은 web/supabase_setup.sql.
+  하루 1번 backup/날짜.json.gz(30일). IndexedDB에 먼저 쓰고(dirty) 업로드 성공하면 해제. 업로드 전 list로 updated_at 비교해 다른 기기 변경 감지 → webMerge(3-way, base=마지막으로 맞춘 자료, id 단위; 내가 바꾼 건 내 것) 후 업로드, 5초 뒤 재확인으로 동시 저장 경합 보정.
+  15초마다 webPoll: 서버가 바뀌었고 입력 중이 아니면 그 자리에서 S 교체+다시 그림. 설정 SQL은 web/supabase_setup.sql.
