@@ -686,7 +686,16 @@ async function webInit(){SB=window.supabase.createClient(WEBCFG.url,WEBCFG.key,{
   window.addEventListener('beforeunload',e=>{if(webDirty||webBusy){webFlush();e.preventDefault();e.returnValue=''}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){if(webDirty)webFlush();return}webPoll()});
   setInterval(webPoll,15000);
+  setTimeout(webDailyDownload,1500);
   window.addEventListener('online',()=>{if(webDirty)webFlush()});window.addEventListener('offline',()=>cloud('err','⚠ 인터넷 끊김 · 이 컴퓨터에 임시 보관 중'))}
+/* 하루 한 번(이 컴퓨터에서 그날 처음 들어올 때): 백업 파일 받으라고 안내 → 누르면 바로 다운로드. 휴대폰은 건너뜀 */
+async function webDailyDownload(){try{
+  if(matchMedia('(pointer:coarse)').matches&&innerWidth<900)return;
+  if(!(S.invoices.length||S.clients.length))return;
+  const k='ojp_dl_'+UID,d=today();let last='';try{last=localStorage.getItem(k)||''}catch(e){}if(last===d)return;
+  try{localStorage.setItem(k,d)}catch(e){}
+  const v=await ask('<div style="font-size:20px;font-weight:bold;margin-bottom:8px">💾 오늘 백업 받기</div>자료는 서버에 자동으로 저장되고 있어요.<br>혹시 몰라 <b>이 컴퓨터에도 백업 파일</b>을 하루 한 번 받아둘게요.<br><span class="muted">([다운로드] 폴더에 저장돼요)</span>',[{label:'💾 지금 받기',val:1},{label:'오늘은 건너뛰기',val:0,cls:'sub'}]);
+  if(v){bkDownload();S.opt.usbLast=Date.now();save();toast('[다운로드] 폴더에 백업 파일을 받았어요 ✅')}}catch(e){console.warn(e)}}
 async function webLogout(){if(!(await ask(`로그아웃할까요?<br><span class="muted">(${esc(WEB_ID)})</span>`,[{label:'로그아웃',val:1},{label:'취소',val:0,cls:'sub'}])))return;
   if(webDirty||webBusy){const b=busy('저장하는 중이에요…');try{await webFlush()}catch(e){}b.close()}await SB.auth.signOut();location.reload()}
 
@@ -1286,7 +1295,7 @@ async function renderBackup(){bkDue();
   $('#bk-pccard').classList.toggle('hide',!IS_APP);if(!IS_APP){$('#bk-now').textContent='💾 백업 파일 받기';return}
   $('#bk-dir').value=winPath(bkDir());
   try{const f=(await Neutralino.filesystem.readDirectory(bkDir())).map(x=>x.entry).filter(n=>/^거래명세서_.*\.json$/.test(n)).sort().reverse();$('#bk-files').innerHTML=f.length?`백업 파일 ${f.length}개 · 최근: `+f.slice(0,3).map(esc).join(', '):'아직 백업 파일이 없어요.'}catch(e){$('#bk-files').textContent='아직 백업 파일이 없어요.'}}
-function bkDownload(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bkText()],{type:'application/json'}));a.download=`거래명세서_백업_${stamp()}.json`;document.body.appendChild(a);a.click();a.remove()}
+function bkDownload(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bkText()],{type:'application/json'}));a.download=`${IS_WEB?'오늘전표':'거래명세서'}_백업_${stamp()}.json`;document.body.appendChild(a);a.click();a.remove()}
 $('#bk-now').onclick=async()=>{if(!IS_APP){bkDownload();S.opt.bkLast=Date.now();save();renderBackup();toast('백업 파일을 받았어요');return}
   try{const p=await writeBk(bkDir(),`거래명세서_${stamp()}.json`,bkText());S.opt.bkLast=Date.now();save();renderBackup();toast('컴퓨터에 백업했어요')}
   catch(e){alert('백업 폴더에 저장하지 못했어요.\n[폴더 바꾸기]로 다른 폴더를 골라주세요.\n('+(e.message||e.code||e)+')')}};
